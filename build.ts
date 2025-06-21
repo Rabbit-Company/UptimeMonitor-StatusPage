@@ -23,7 +23,7 @@ try {
 	console.log("✅ TypeScript compilation complete");
 
 	await fs.cp("./src/index.html", "./dist/index.html");
-
+	await fs.cp("./src/config.js", "./dist/config.js");
 	await fs.cp("./src/_headers", "./dist/_headers");
 
 	console.log("🎉 Build complete! Output in ./dist");

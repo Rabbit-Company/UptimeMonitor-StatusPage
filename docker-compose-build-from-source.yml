@@ -10,6 +10,8 @@ services:
       # Change to your own backend server and slug
       - BACKEND_URL=https://pulse.rabbit-company.com
       - STATUS_PAGE_SLUG=passky
+      - UPTIME_PRECISION=3
+      - DEFAULT_PERIOD=24h
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/health"]
       interval: 30s

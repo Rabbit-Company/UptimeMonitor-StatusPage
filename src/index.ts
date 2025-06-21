@@ -1,9 +1,5 @@
 import Chart from "chart.js/auto";
 
-// Configuration - Users need to set these
-const BACKEND_URL = "YOUR_BACKEND_URL_HERE";
-const STATUS_PAGE_SLUG = "YOUR_STATUS_PAGE_SLUG_HERE";
-
 interface StatusData {
 	name: string;
 	slug: string;
@@ -41,7 +37,7 @@ interface MonitorHistoryData {
 
 // Global state
 let statusData: StatusData | null = null;
-let selectedUptimePeriod = "24h";
+let selectedUptimePeriod = DEFAULT_PERIOD;
 let charts: Record<string, any> = {};
 let expandedMonitors = new Set<string>();
 
@@ -77,6 +73,8 @@ async function init(): Promise<void> {
 
 		statusData = await response.json();
 
+		(document.getElementById("uptimePeriodSelector") as HTMLSelectElement).value = selectedUptimePeriod;
+
 		document.getElementById("loading")!.classList.add("hidden");
 		document.getElementById("content")!.classList.remove("hidden");
 
@@ -111,6 +109,19 @@ function setupEventListeners(): void {
 
 function renderPage(): void {
 	if (!statusData) return;
+
+	expandedMonitors.forEach((monitorId) => {
+		// Destroy any existing charts
+		if (charts[`uptime-${monitorId}`]) {
+			charts[`uptime-${monitorId}`].destroy();
+			delete charts[`uptime-${monitorId}`];
+		}
+		if (charts[`latency-${monitorId}`]) {
+			charts[`latency-${monitorId}`].destroy();
+			delete charts[`latency-${monitorId}`];
+		}
+	});
+	expandedMonitors.clear();
 
 	document.getElementById("serviceName")!.textContent = statusData.name;
 
@@ -154,7 +165,7 @@ function renderPage(): void {
 
 	countServices(statusData.items);
 
-	document.getElementById("uptimeValue")!.textContent = serviceCount > 0 ? `${(totalUptime / serviceCount).toFixed(2)}%` : "-";
+	document.getElementById("uptimeValue")!.textContent = serviceCount > 0 ? `${(totalUptime / serviceCount).toFixed(UPTIME_PRECISION)}%` : "-";
 	document.getElementById("avgLatency")!.textContent = serviceCount > 0 ? `${Math.round(totalLatency / serviceCount)}ms` : "-";
 	document.getElementById("servicesUp")!.textContent = servicesUp.toString();
 	document.getElementById("servicesDown")!.textContent = servicesDown.toString();
@@ -208,7 +219,9 @@ function renderServiceItem(item: StatusItem, depth: number): HTMLElement {
 								? `
 							<div class="text-right">
 								<p class="text-sm text-gray-400">Uptime (${selectedUptimePeriod})</p>
-								<p class="text-sm font-semibold ${uptimeVal > 99 ? "text-emerald-400" : uptimeVal > 95 ? "text-yellow-400" : "text-red-400"}">${uptimeVal.toFixed(2)}%</p>
+								<p class="text-sm font-semibold ${uptimeVal > 99 ? "text-emerald-400" : uptimeVal > 95 ? "text-yellow-400" : "text-red-400"}">${uptimeVal.toFixed(
+										UPTIME_PRECISION
+								  )}%</p>
 							</div>
 						`
 								: ""
@@ -244,7 +257,9 @@ function renderServiceItem(item: StatusItem, depth: number): HTMLElement {
 							</div>
 							<div class="text-right">
 								<p class="text-sm text-gray-400">Uptime (${selectedUptimePeriod})</p>
-								<p class="text-sm font-semibold ${uptimeVal! > 99 ? "text-emerald-400" : uptimeVal! > 95 ? "text-yellow-400" : "text-red-400"}">${uptimeVal?.toFixed(2)}%</p>
+								<p class="text-sm font-semibold ${uptimeVal! > 99 ? "text-emerald-400" : uptimeVal! > 95 ? "text-yellow-400" : "text-red-400"}">${uptimeVal?.toFixed(
+			UPTIME_PRECISION
+		)}%</p>
 							</div>
 							<svg class="w-5 h-5 text-gray-400 transform transition-transform ${isExpanded ? "rotate-180" : ""}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -296,15 +311,15 @@ function renderServiceItem(item: StatusItem, depth: number): HTMLElement {
 							</div>
 							<div>
 								<p class="text-xs text-gray-500">7 Day Uptime</p>
-								<p class="text-sm text-gray-300">${item.uptime7d?.toFixed(2)}%</p>
+								<p class="text-sm text-gray-300">${item.uptime7d?.toFixed(UPTIME_PRECISION)}%</p>
 							</div>
 							<div>
 								<p class="text-xs text-gray-500">30 Day Uptime</p>
-								<p class="text-sm text-gray-300">${item.uptime30d?.toFixed(2)}%</p>
+								<p class="text-sm text-gray-300">${item.uptime30d?.toFixed(UPTIME_PRECISION)}%</p>
 							</div>
 							<div>
 								<p class="text-xs text-gray-500">90 Day Uptime</p>
-								<p class="text-sm text-gray-300">${item.uptime90d?.toFixed(2)}%</p>
+								<p class="text-sm text-gray-300">${item.uptime90d?.toFixed(UPTIME_PRECISION)}%</p>
 							</div>
 						</div>
 					</div>
@@ -382,8 +397,7 @@ async function toggleMonitor(monitorId: string): Promise<void> {
 		expandedMonitors.add(monitorId);
 		element.classList.remove("hidden");
 
-		// Load default period (30d)
-		await loadMonitorHistory(monitorId, "30d");
+		await loadMonitorHistory(monitorId, selectedUptimePeriod);
 	}
 
 	// Update chevron
@@ -460,7 +474,7 @@ async function loadMonitorHistory(monitorId: string, period: string): Promise<vo
 					tooltip: {
 						callbacks: {
 							label: function (context: any) {
-								return `Uptime: ${context.parsed.y.toFixed(2)}%`;
+								return `Uptime: ${context.parsed.y.toFixed(UPTIME_PRECISION)}%`;
 							},
 						},
 					},
