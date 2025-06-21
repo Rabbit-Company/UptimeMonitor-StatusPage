@@ -4,6 +4,10 @@
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<title>Status Page</title>
+		<meta
+			http-equiv="Content-Security-Policy"
+			content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self' https:; base-uri 'self'; form-action 'self';"
+		/>
 		<link rel="stylesheet" href="index.css" />
 	</head>
 	<body class="bg-gray-950 text-gray-100">
@@ -43,7 +47,6 @@
 								<p class="text-gray-400 text-sm">Overall Uptime</p>
 								<select
 									id="uptimePeriodSelector"
-									onchange="changeUptimePeriod(this.value)"
 									class="bg-gray-800 text-gray-300 text-xs rounded px-2 py-1 border border-gray-700 focus:outline-none focus:border-emerald-500"
 								>
 									<option value="1h">1h</option>

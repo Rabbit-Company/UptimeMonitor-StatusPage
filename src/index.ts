@@ -77,11 +77,11 @@ async function init(): Promise<void> {
 
 		statusData = await response.json();
 
-		// Hide loading, show content
 		document.getElementById("loading")!.classList.add("hidden");
 		document.getElementById("content")!.classList.remove("hidden");
 
-		// Render the page
+		setupEventListeners();
+
 		renderPage();
 	} catch (error: any) {
 		console.error("Error loading status data:", error);
@@ -99,14 +99,23 @@ async function init(): Promise<void> {
 	}
 }
 
+function setupEventListeners(): void {
+	const uptimePeriodSelector = document.getElementById("uptimePeriodSelector") as HTMLSelectElement;
+	if (uptimePeriodSelector) {
+		uptimePeriodSelector.addEventListener("change", (e) => {
+			const target = e.target as HTMLSelectElement;
+			changeUptimePeriod(target.value);
+		});
+	}
+}
+
 function renderPage(): void {
 	if (!statusData) return;
 
-	// Update header
 	document.getElementById("serviceName")!.textContent = statusData.name;
 
 	// Calculate overall status
-	const overallUp = !statusData.items.some((item) => getItemStatus(item) === "down");
+	const overallUp = !statusData.items.some((item) => item.status === "down");
 	const overallStatusEl = document.getElementById("overallStatus")!;
 	const statusDot = overallStatusEl.querySelector("div")!;
 	const statusText = overallStatusEl.querySelector("span")!;
@@ -145,26 +154,14 @@ function renderPage(): void {
 
 	countServices(statusData.items);
 
-	// Update summary cards
 	document.getElementById("uptimeValue")!.textContent = serviceCount > 0 ? `${(totalUptime / serviceCount).toFixed(2)}%` : "-";
 	document.getElementById("avgLatency")!.textContent = serviceCount > 0 ? `${Math.round(totalLatency / serviceCount)}ms` : "-";
 	document.getElementById("servicesUp")!.textContent = servicesUp.toString();
 	document.getElementById("servicesDown")!.textContent = servicesDown.toString();
 
-	// Update last updated
 	document.getElementById("lastUpdated")!.textContent = new Date(statusData.lastUpdated).toLocaleString();
 
-	// Render services
 	renderServices();
-}
-
-function getItemStatus(item: StatusItem): string {
-	if (item.status) return item.status;
-	if (item.children) {
-		const hasDown = item.children.some((child) => getItemStatus(child) === "down");
-		return hasDown ? "down" : "up";
-	}
-	return "unknown";
 }
 
 function renderServices(): void {
@@ -176,6 +173,8 @@ function renderServices(): void {
 	statusData.items.forEach((item) => {
 		container.appendChild(renderServiceItem(item, 0));
 	});
+
+	addServiceEventListeners();
 }
 
 function renderServiceItem(item: StatusItem, depth: number): HTMLElement {
@@ -188,9 +187,9 @@ function renderServiceItem(item: StatusItem, depth: number): HTMLElement {
 		const uptimeVal = getUptimeValue(item, selectedUptimePeriod);
 		div.innerHTML = `
 			<div class="bg-gray-900/50 backdrop-blur rounded-xl border border-gray-800 overflow-hidden">
-				<button onclick="window.toggleGroup('${item.id}')" class="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-800/50 transition-colors">
+				<button data-group-id="${item.id}" class="group-toggle w-full px-6 py-4 flex items-center justify-between hover:bg-gray-800/50 transition-colors">
 					<div class="flex items-center space-x-3">
-						<div class="w-2 h-2 rounded-full ${getItemStatus(item) === "up" ? "bg-emerald-500" : "bg-red-500"}"></div>
+						<div class="w-2 h-2 rounded-full ${item.status === "up" ? "bg-emerald-500" : "bg-red-500"}"></div>
 						<h3 class="text-lg font-semibold text-white">${item.name}</h3>
 					</div>
 					<div class="flex items-center space-x-6">
@@ -232,7 +231,7 @@ function renderServiceItem(item: StatusItem, depth: number): HTMLElement {
 		const uptimeVal = getUptimeValue(item, selectedUptimePeriod);
 		div.innerHTML = `
 			<div class="bg-gray-900/50 backdrop-blur rounded-xl border border-gray-800 overflow-hidden">
-				<button onclick="window.toggleMonitor('${item.id}')" class="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-800/50 transition-colors">
+				<button data-monitor-id="${item.id}" class="monitor-toggle w-full px-6 py-4 flex items-center justify-between hover:bg-gray-800/50 transition-colors">
 					<div class="flex items-center justify-between w-full">
 						<div class="flex items-center space-x-3">
 							<div class="w-2 h-2 rounded-full ${item.status === "up" ? "bg-emerald-500" : "bg-red-500"}"></div>
@@ -257,22 +256,22 @@ function renderServiceItem(item: StatusItem, depth: number): HTMLElement {
 					<div class="px-6 py-4 border-t border-gray-800">
 						<!-- Time period selector -->
 						<div class="flex space-x-2 mb-4">
-							<button onclick="window.loadMonitorHistory('${
+							<button data-monitor-id="${
 								item.id
-							}', '1h')" class="px-3 py-1 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors">1h</button>
-							<button onclick="window.loadMonitorHistory('${
+							}" data-period="1h" class="period-btn px-3 py-1 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors">1h</button>
+							<button data-monitor-id="${
 								item.id
-							}', '24h')" class="px-3 py-1 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors">24h</button>
-							<button onclick="window.loadMonitorHistory('${
+							}" data-period="24h" class="period-btn px-3 py-1 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors">24h</button>
+							<button data-monitor-id="${
 								item.id
-							}', '7d')" class="px-3 py-1 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors">7d</button>
-							<button onclick="window.loadMonitorHistory('${item.id}', '30d')" class="px-3 py-1 text-sm rounded-lg bg-gray-700 text-gray-300 transition-colors">30d</button>
-							<button onclick="window.loadMonitorHistory('${
+							}" data-period="7d" class="period-btn px-3 py-1 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors">7d</button>
+							<button data-monitor-id="${item.id}" data-period="30d" class="period-btn px-3 py-1 text-sm rounded-lg bg-gray-700 text-gray-300 transition-colors">30d</button>
+							<button data-monitor-id="${
 								item.id
-							}', '90d')" class="px-3 py-1 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors">90d</button>
-							<button onclick="window.loadMonitorHistory('${
+							}" data-period="90d" class="period-btn px-3 py-1 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors">90d</button>
+							<button data-monitor-id="${
 								item.id
-							}', '365d')" class="px-3 py-1 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors">365d</button>
+							}" data-period="365d" class="period-btn px-3 py-1 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors">365d</button>
 						</div>
 						<!-- Charts -->
 						<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -315,6 +314,33 @@ function renderServiceItem(item: StatusItem, depth: number): HTMLElement {
 	}
 
 	return div;
+}
+
+function addServiceEventListeners(): void {
+	document.querySelectorAll(".group-toggle").forEach((button) => {
+		button.addEventListener("click", (e) => {
+			const btn = e.currentTarget as HTMLElement;
+			const groupId = btn.getAttribute("data-group-id");
+			if (groupId) toggleGroup(groupId);
+		});
+	});
+
+	document.querySelectorAll(".monitor-toggle").forEach((button) => {
+		button.addEventListener("click", async (e) => {
+			const btn = e.currentTarget as HTMLElement;
+			const monitorId = btn.getAttribute("data-monitor-id");
+			if (monitorId) await toggleMonitor(monitorId);
+		});
+	});
+
+	document.querySelectorAll(".period-btn").forEach((button) => {
+		button.addEventListener("click", async (e) => {
+			const btn = e.currentTarget as HTMLElement;
+			const monitorId = btn.getAttribute("data-monitor-id");
+			const period = btn.getAttribute("data-period");
+			if (monitorId && period) await loadMonitorHistory(monitorId, period);
+		});
+	});
 }
 
 function toggleGroup(groupId: string): void {
@@ -372,12 +398,13 @@ async function loadMonitorHistory(monitorId: string, period: string): Promise<vo
 		const container = document.getElementById(`monitor-${monitorId}`);
 		if (!container) return;
 
-		const buttons = container.querySelectorAll("button");
+		const buttons = container.querySelectorAll(".period-btn");
 		buttons.forEach((btn) => {
-			if (btn.textContent === period) {
-				btn.className = "px-3 py-1 text-sm rounded-lg bg-gray-700 text-gray-300 transition-colors";
-			} else if (btn.textContent?.match(/^\d+[hd]$|365d$/)) {
-				btn.className = "px-3 py-1 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors";
+			const btnPeriod = btn.getAttribute("data-period");
+			if (btnPeriod === period) {
+				btn.className = "period-btn px-3 py-1 text-sm rounded-lg bg-gray-700 text-gray-300 transition-colors";
+			} else {
+				btn.className = "period-btn px-3 py-1 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors";
 			}
 		});
 
@@ -559,11 +586,4 @@ async function loadMonitorHistory(monitorId: string, period: string): Promise<vo
 	}
 }
 
-// Expose functions to window for onclick handlers
-(window as any).changeUptimePeriod = changeUptimePeriod;
-(window as any).toggleGroup = toggleGroup;
-(window as any).toggleMonitor = toggleMonitor;
-(window as any).loadMonitorHistory = loadMonitorHistory;
-
-// Start the application
 init();

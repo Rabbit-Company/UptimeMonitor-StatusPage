@@ -24,6 +24,8 @@ try {
 
 	await fs.cp("./src/index.html", "./dist/index.html");
 
+	await fs.cp("./src/_headers", "./dist/_headers");
+
 	console.log("🎉 Build complete! Output in ./dist");
 } catch (error) {
 	console.error("❌ Build error:", error);
