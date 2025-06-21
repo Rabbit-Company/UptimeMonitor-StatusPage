@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Status Page</title>
+		<link rel="stylesheet" href="index.css" />
+	</head>
+	<body class="bg-gray-950 text-gray-100">
+		<div id="app" class="min-h-screen">
+			<!-- Loading State -->
+			<div id="loading" class="flex items-center justify-center min-h-screen">
+				<div class="text-center">
+					<div class="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+					<p class="text-gray-400">Loading status data...</p>
+				</div>
+			</div>
+
+			<!-- Main Content (hidden initially) -->
+			<div id="content" class="hidden">
+				<!-- Header -->
+				<header class="bg-gray-900/50 backdrop-blur-lg border-b border-gray-800 sticky top-0 z-50">
+					<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+						<div class="flex items-center justify-between">
+							<div>
+								<h1 id="serviceName" class="text-3xl font-bold text-white"></h1>
+								<p class="text-gray-400 mt-1">Service Status Monitor</p>
+							</div>
+							<div id="overallStatus" class="flex items-center space-x-2">
+								<div class="w-3 h-3 rounded-full"></div>
+								<span class="text-sm font-medium"></span>
+							</div>
+						</div>
+					</div>
+				</header>
+
+				<!-- Main Container -->
+				<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+					<!-- Summary Cards -->
+					<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+						<div class="bg-gray-900/50 backdrop-blur rounded-xl p-6 border border-gray-800">
+							<div class="flex items-center justify-between mb-2">
+								<p class="text-gray-400 text-sm">Overall Uptime</p>
+								<select
+									id="uptimePeriodSelector"
+									onchange="changeUptimePeriod(this.value)"
+									class="bg-gray-800 text-gray-300 text-xs rounded px-2 py-1 border border-gray-700 focus:outline-none focus:border-emerald-500"
+								>
+									<option value="1h">1h</option>
+									<option value="24h" selected>24h</option>
+									<option value="7d">7d</option>
+									<option value="30d">30d</option>
+									<option value="90d">90d</option>
+									<option value="365d">365d</option>
+								</select>
+							</div>
+							<p id="uptimeValue" class="text-2xl font-bold text-white">-</p>
+						</div>
+						<div class="bg-gray-900/50 backdrop-blur rounded-xl p-6 border border-gray-800">
+							<p class="text-gray-400 text-sm">Average Latency</p>
+							<p id="avgLatency" class="text-2xl font-bold text-white mt-2">-</p>
+						</div>
+						<div class="bg-gray-900/50 backdrop-blur rounded-xl p-6 border border-gray-800">
+							<p class="text-gray-400 text-sm">Services Up</p>
+							<p id="servicesUp" class="text-2xl font-bold text-emerald-400 mt-2">-</p>
+						</div>
+						<div class="bg-gray-900/50 backdrop-blur rounded-xl p-6 border border-gray-800">
+							<p class="text-gray-400 text-sm">Services Down</p>
+							<p id="servicesDown" class="text-2xl font-bold text-red-400 mt-2">-</p>
+						</div>
+					</div>
+
+					<!-- Last Updated -->
+					<div class="text-right mb-4">
+						<p class="text-gray-500 text-sm">Last updated: <span id="lastUpdated" class="text-gray-400"></span></p>
+					</div>
+
+					<!-- Services List -->
+					<div id="servicesList" class="space-y-4">
+						<!-- Services will be dynamically inserted here -->
+					</div>
+				</main>
+
+				<!-- Footer -->
+				<footer class="mt-16 py-8 border-t border-gray-800">
+					<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-gray-500">
+						<p>Powered by <a class="text-emerald-600" href="https://github.com/Rabbit-Company/UptimeMonitor-Server" target="_blank">UptimeMonitor</a></p>
+					</div>
+				</footer>
+			</div>
+		</div>
+
+		<script type="module" src="index.js"></script>
+	</body>
+</html>
