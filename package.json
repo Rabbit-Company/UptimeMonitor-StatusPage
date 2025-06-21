@@ -4,6 +4,7 @@
 	"type": "module",
 	"private": true,
 	"scripts": {
+		"start": "bun run start.ts",
 		"build": "bun run build.ts && npx @tailwindcss/cli -i ./src/index.css -o ./dist/index.css"
 	},
 	"devDependencies": {

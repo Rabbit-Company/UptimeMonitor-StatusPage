@@ -1,0 +1,16 @@
+services:
+  status-page:
+    image: rabbitcompany/status-page:latest
+    container_name: status-page
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    environment:
+      # Change to your own backend server and slug
+      - BACKEND_URL=https://pulse.rabbit-company.com
+      - STATUS_PAGE_SLUG=passky
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

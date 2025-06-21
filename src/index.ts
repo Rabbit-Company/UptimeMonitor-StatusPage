@@ -1,8 +1,8 @@
 import Chart from "chart.js/auto";
 
 // Configuration - Users need to set these
-const BACKEND_HOSTNAME = "https://pulse.rabbit-company.com";
-const STATUS_PAGE_SLUG = "passky";
+const BACKEND_URL = "YOUR_BACKEND_URL_HERE";
+const STATUS_PAGE_SLUG = "YOUR_STATUS_PAGE_SLUG_HERE";
 
 interface StatusData {
 	name: string;
@@ -72,7 +72,7 @@ function getUptimeValue(item: StatusItem, period: string): number | undefined {
 // Initialize
 async function init(): Promise<void> {
 	try {
-		const response = await fetch(`${BACKEND_HOSTNAME}/v1/status/${STATUS_PAGE_SLUG}`);
+		const response = await fetch(`${BACKEND_URL}/v1/status/${STATUS_PAGE_SLUG}`);
 		if (!response.ok) throw new Error("Failed to fetch status data");
 
 		statusData = await response.json();
@@ -381,7 +381,7 @@ async function loadMonitorHistory(monitorId: string, period: string): Promise<vo
 			}
 		});
 
-		const response = await fetch(`${BACKEND_HOSTNAME}/v1/monitors/${monitorId}/history?period=${period}`);
+		const response = await fetch(`${BACKEND_URL}/v1/monitors/${monitorId}/history?period=${period}`);
 		if (!response.ok) throw new Error("Failed to fetch monitor history");
 
 		const historyData: MonitorHistoryData = await response.json();
