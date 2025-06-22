@@ -24,15 +24,18 @@
 			<div id="content" class="hidden">
 				<!-- Header -->
 				<header class="bg-gray-900/50 backdrop-blur-lg border-b border-gray-800 sticky top-0 z-50">
-					<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-						<div class="flex items-center justify-between">
-							<div>
-								<h1 id="serviceName" class="text-3xl font-bold text-white"></h1>
-								<p class="text-gray-400 mt-1">Service Status Monitor</p>
+					<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 sm:py-3 lg:py-6">
+						<div class="flex items-center justify-center lg:justify-between">
+							<!-- Title section - hidden on small screens, visible on larger -->
+							<div class="hidden lg:block">
+								<h1 id="serviceName" class="text-xl sm:text-2xl lg:text-3xl font-bold text-white"></h1>
+								<p class="text-gray-400 mt-1 hidden sm:block">Service Status Monitor</p>
 							</div>
+
+							<!-- Overall status - always visible, centered when title is hidden -->
 							<div id="overallStatus" class="flex items-center space-x-2">
-								<div class="w-3 h-3 rounded-full"></div>
-								<span class="text-sm font-medium"></span>
+								<div class="w-3 h-3 rounded-full bg-emerald-500"></div>
+								<span class="text-sm font-medium text-white"></span>
 							</div>
 						</div>
 					</div>
