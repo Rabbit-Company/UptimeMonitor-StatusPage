@@ -250,7 +250,7 @@ function renderServices(): void {
 
 function renderServiceItem(item: StatusItem, depth: number): HTMLElement {
 	const div = document.createElement("div");
-	div.className = depth > 0 ? "ml-8" : "";
+	div.className = depth > 0 ? "ml-0 lg:ml-8" : "";
 
 	if (item.type === "group") {
 		// Group header
