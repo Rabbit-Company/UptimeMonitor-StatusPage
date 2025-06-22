@@ -65,6 +65,36 @@ function getUptimeValue(item: StatusItem, period: string): number | undefined {
 	}
 }
 
+function getTime(date: Date | string | number, seconds: boolean = true): string {
+	const d = new Date(date);
+	const pad = (n: number) => String(n).padStart(2, "0");
+	const h = pad(d.getHours());
+	const m = pad(d.getMinutes());
+	const s = pad(d.getSeconds());
+	return seconds ? `${h}:${m}:${s}` : `${h}:${m}`;
+}
+
+function getDate(date: Date | string | number): string {
+	const d = new Date(date);
+	const pad = (n: number) => String(n).padStart(2, "0");
+	const year = d.getFullYear();
+	const month = pad(d.getMonth() + 1);
+	const day = pad(d.getDate());
+	return `${year}-${month}-${day}`;
+}
+
+function getDateTime(date: Date | string | number, seconds: boolean = true): string {
+	const d = new Date(date);
+	const pad = (n: number) => String(n).padStart(2, "0");
+	const year = d.getFullYear();
+	const month = pad(d.getMonth() + 1);
+	const day = pad(d.getDate());
+	const hours = pad(d.getHours());
+	const minutes = pad(d.getMinutes());
+	const secs = pad(d.getSeconds());
+	return seconds ? `${year}-${month}-${day} ${hours}:${minutes}:${secs}` : `${year}-${month}-${day} ${hours}:${minutes}`;
+}
+
 // Initialize
 async function init(): Promise<void> {
 	try {
@@ -170,7 +200,7 @@ function renderPage(): void {
 	document.getElementById("servicesUp")!.textContent = servicesUp.toString();
 	document.getElementById("servicesDown")!.textContent = servicesDown.toString();
 
-	document.getElementById("lastUpdated")!.textContent = new Date(statusData.lastUpdated).toLocaleString();
+	document.getElementById("lastUpdated")!.textContent = getDateTime(statusData.lastUpdated);
 
 	renderServices();
 }
@@ -307,7 +337,7 @@ function renderServiceItem(item: StatusItem, depth: number): HTMLElement {
 						<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
 							<div>
 								<p class="text-xs text-gray-500">Last Check</p>
-								<p class="text-sm text-gray-300">${new Date(item.lastCheck!).toLocaleString()}</p>
+								<p class="text-sm text-gray-300">${getDateTime(item.lastCheck!)}</p>
 							</div>
 							<div>
 								<p class="text-xs text-gray-500">7 Day Uptime</p>
@@ -431,9 +461,11 @@ async function loadMonitorHistory(monitorId: string, period: string): Promise<vo
 		const labels = historyData.data.map((d) => {
 			const date = new Date(d.time);
 			if (period === "1h" || period === "24h") {
-				return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+				return getTime(date, false);
+			} else if (period === "7d") {
+				return getDateTime(date, false);
 			} else {
-				return date.toLocaleDateString([], { month: "short", day: "numeric" });
+				return getDate(date);
 			}
 		});
 
