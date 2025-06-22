@@ -258,7 +258,7 @@ function renderServiceItem(item: StatusItem, depth: number): HTMLElement {
 		const uptimeVal = getUptimeValue(item, selectedUptimePeriod);
 		div.innerHTML = `
 			<div class="bg-gray-900/50 backdrop-blur rounded-xl border border-gray-800 overflow-hidden">
-				<button data-group-id="${item.id}" class="group-toggle w-full px-6 py-4 hover:bg-gray-800/50 transition-colors">
+				<button data-group-id="${item.id}" class="cursor-pointer group-toggle w-full px-6 py-4 hover:bg-gray-800/50 transition-colors">
 					<!-- Desktop: everything in one row -->
 					<div class="hidden sm:flex items-center justify-between">
 						<div class="flex items-center space-x-3">
@@ -346,7 +346,7 @@ function renderServiceItem(item: StatusItem, depth: number): HTMLElement {
 		const uptimeVal = getUptimeValue(item, selectedUptimePeriod);
 		div.innerHTML = `
 			<div class="bg-gray-900/50 backdrop-blur rounded-xl border border-gray-800 overflow-hidden">
-				<button data-monitor-id="${item.id}" class="monitor-toggle w-full px-6 py-4 hover:bg-gray-800/50 transition-colors">
+				<button data-monitor-id="${item.id}" class="cursor-pointer monitor-toggle w-full px-6 py-4 hover:bg-gray-800/50 transition-colors">
 					<!-- Desktop: everything in one row -->
 					<div class="hidden sm:flex items-center justify-between w-full">
 						<div class="flex items-center space-x-3">
@@ -403,20 +403,22 @@ function renderServiceItem(item: StatusItem, depth: number): HTMLElement {
 						<div class="flex space-x-2 mb-4">
 							<button data-monitor-id="${
 								item.id
-							}" data-period="1h" class="period-btn px-3 py-1 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors">1h</button>
+							}" data-period="1h" class="cursor-pointer period-btn px-3 py-1 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors">1h</button>
 							<button data-monitor-id="${
 								item.id
-							}" data-period="24h" class="period-btn px-3 py-1 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors">24h</button>
+							}" data-period="24h" class="cursor-pointer period-btn px-3 py-1 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors">24h</button>
 							<button data-monitor-id="${
 								item.id
-							}" data-period="7d" class="period-btn px-3 py-1 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors">7d</button>
-							<button data-monitor-id="${item.id}" data-period="30d" class="period-btn px-3 py-1 text-sm rounded-lg bg-gray-700 text-gray-300 transition-colors">30d</button>
+							}" data-period="7d" class="cursor-pointer period-btn px-3 py-1 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors">7d</button>
 							<button data-monitor-id="${
 								item.id
-							}" data-period="90d" class="period-btn px-3 py-1 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors">90d</button>
+							}" data-period="30d" class="cursor-pointer period-btn px-3 py-1 text-sm rounded-lg bg-gray-700 text-gray-300 transition-colors">30d</button>
 							<button data-monitor-id="${
 								item.id
-							}" data-period="365d" class="period-btn px-3 py-1 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors">365d</button>
+							}" data-period="90d" class="cursor-pointer period-btn px-3 py-1 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors">90d</button>
+							<button data-monitor-id="${
+								item.id
+							}" data-period="365d" class="cursor-pointer period-btn px-3 py-1 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors">365d</button>
 						</div>
 						<!-- Charts -->
 						<div>
@@ -777,9 +779,9 @@ async function loadMonitorHistory(monitorId: string, period: string): Promise<vo
 		buttons.forEach((btn) => {
 			const btnPeriod = btn.getAttribute("data-period");
 			if (btnPeriod === period) {
-				btn.className = "period-btn px-3 py-1 text-sm rounded-lg bg-gray-700 text-gray-300 transition-colors";
+				btn.className = "cursor-pointer period-btn px-3 py-1 text-sm rounded-lg bg-gray-700 text-gray-300 transition-colors";
 			} else {
-				btn.className = "period-btn px-3 py-1 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors";
+				btn.className = "cursor-pointer period-btn px-3 py-1 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors";
 			}
 		});
 
