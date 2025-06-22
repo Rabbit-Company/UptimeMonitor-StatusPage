@@ -16,6 +16,7 @@
 		"typescript": "^5"
 	},
 	"dependencies": {
-		"chart.js": "^4.5.0"
+		"chart.js": "^4.5.0",
+		"chartjs-plugin-zoom": "^2.2.0"
 	}
 }

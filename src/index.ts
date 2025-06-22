@@ -1,4 +1,33 @@
-import Chart from "chart.js/auto";
+import {
+	Chart,
+	LineController,
+	LineElement,
+	BarController,
+	BarElement,
+	PointElement,
+	LinearScale,
+	CategoryScale,
+	TimeScale,
+	Tooltip,
+	Legend,
+	Filler,
+} from "chart.js";
+import zoomPlugin from "chartjs-plugin-zoom";
+
+Chart.register(
+	LineController,
+	LineElement,
+	BarController,
+	BarElement,
+	PointElement,
+	LinearScale,
+	CategoryScale,
+	TimeScale,
+	Tooltip,
+	Legend,
+	Filler,
+	zoomPlugin
+);
 
 interface StatusData {
 	name: string;
@@ -40,6 +69,7 @@ let statusData: StatusData | null = null;
 let selectedUptimePeriod = DEFAULT_PERIOD;
 let charts: Record<string, any> = {};
 let expandedMonitors = new Set<string>();
+const linkedCharts: Record<string, { uptime?: Chart; latency?: Chart }> = {};
 
 function changeUptimePeriod(period: string): void {
 	selectedUptimePeriod = period;
@@ -436,6 +466,237 @@ async function toggleMonitor(monitorId: string): Promise<void> {
 	chevron?.classList.toggle("rotate-180");
 }
 
+function addTouchHint(container: HTMLElement): void {
+	const hintDiv = document.createElement("div");
+	hintDiv.className = "touch-hint absolute bottom-2 left-2 text-xs text-gray-500 bg-gray-800/90 backdrop-blur rounded px-2 py-1";
+	hintDiv.innerHTML = `
+		<span class="flex items-center space-x-1">
+			<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11"></path>
+			</svg>
+			<span>Pinch to zoom • Drag to pan</span>
+		</span>
+  `;
+	container.appendChild(hintDiv);
+
+	setTimeout(() => {
+		hintDiv.style.transition = "opacity 0.5s";
+		hintDiv.style.opacity = "0";
+		setTimeout(() => hintDiv.remove(), 500);
+	}, 5000);
+}
+
+function addZoomControls(chart: Chart, monitorId: string, chartType: "uptime" | "latency"): void {
+	const canvas = chart.canvas;
+	const container = canvas.parentElement;
+	if (!container) return;
+
+	// Create controls container with unique ID for this chart
+	const controlsDiv = document.createElement("div");
+	controlsDiv.className = "chart-controls absolute top-2 right-2 flex items-center space-x-2 bg-gray-800/90 backdrop-blur rounded-lg p-1";
+	controlsDiv.id = `controls-${monitorId}-${chartType}`;
+	controlsDiv.innerHTML = `
+		<button class="zoom-in p-1.5 hover:bg-gray-700 rounded transition-colors" title="Zoom In">
+			<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"></path>
+			</svg>
+		</button>
+		<button class="zoom-out p-1.5 hover:bg-gray-700 rounded transition-colors" title="Zoom Out">
+			<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7"></path>
+			</svg>
+		</button>
+		<button class="zoom-reset p-1.5 hover:bg-gray-700 rounded transition-colors" title="Reset Zoom">
+			<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+			</svg>
+		</button>
+		<div class="zoom-level hidden sm:block px-2 py-1 text-xs text-gray-400">100%</div>
+  `;
+
+	// Make container relative for absolute positioning
+	container.style.position = "relative";
+	container.appendChild(controlsDiv);
+
+	// Add event listeners
+	const zoomInBtn = controlsDiv.querySelector(".zoom-in") as HTMLButtonElement;
+	const zoomOutBtn = controlsDiv.querySelector(".zoom-out") as HTMLButtonElement;
+	const zoomResetBtn = controlsDiv.querySelector(".zoom-reset") as HTMLButtonElement;
+
+	zoomInBtn.addEventListener("click", () => {
+		zoomLinkedCharts(monitorId, 1.1);
+	});
+
+	zoomOutBtn.addEventListener("click", () => {
+		zoomLinkedCharts(monitorId, 0.9);
+	});
+
+	zoomResetBtn.addEventListener("click", () => {
+		resetLinkedCharts(monitorId);
+	});
+
+	// Add touch gesture hints (only on first chart to avoid duplication)
+	if ("ontouchstart" in window && chartType === "uptime") {
+		addTouchHint(container);
+	}
+
+	// Add visual feedback for zoom/pan
+	canvas.addEventListener("wheel", () => {
+		updateAllZoomLevels(monitorId);
+	});
+
+	canvas.addEventListener("mousedown", () => {
+		canvas.style.cursor = "grabbing";
+	});
+
+	canvas.addEventListener("mouseup", () => {
+		canvas.style.cursor = "grab";
+	});
+
+	canvas.addEventListener("mouseleave", () => {
+		canvas.style.cursor = "default";
+	});
+
+	// Set initial cursor
+	canvas.style.cursor = "grab";
+}
+
+function zoomLinkedCharts(monitorId: string, zoomFactor: number): void {
+	const linkedPair = linkedCharts[monitorId];
+	if (!linkedPair) return;
+
+	if (linkedPair.uptime) {
+		linkedPair.uptime.zoom(zoomFactor);
+	}
+	if (linkedPair.latency) {
+		linkedPair.latency.zoom(zoomFactor);
+	}
+
+	updateAllZoomLevels(monitorId);
+}
+
+function resetLinkedCharts(monitorId: string): void {
+	const linkedPair = linkedCharts[monitorId];
+	if (!linkedPair) return;
+
+	if (linkedPair.uptime) {
+		linkedPair.uptime.resetZoom();
+	}
+
+	if (linkedPair.latency) {
+		linkedPair.latency.resetZoom();
+	}
+
+	updateAllZoomLevels(monitorId);
+}
+
+function updateAllZoomLevels(monitorId: string): void {
+	const linkedPair = linkedCharts[monitorId];
+	if (!linkedPair || !linkedPair.uptime) return;
+
+	const zoomLevel = linkedPair.uptime.getZoomLevel();
+	const zoomPercentage = `${Math.round(zoomLevel * 100)}%`;
+
+	// Update uptime chart zoom level display
+	const uptimeControls = document.getElementById(`controls-${monitorId}-uptime`);
+	if (uptimeControls) {
+		const uptimeZoomLevel = uptimeControls.querySelector(".zoom-level");
+		if (uptimeZoomLevel) {
+			uptimeZoomLevel.textContent = zoomPercentage;
+		}
+	}
+
+	// Update latency chart zoom level display
+	const latencyControls = document.getElementById(`controls-${monitorId}-latency`);
+	if (latencyControls) {
+		const latencyZoomLevel = latencyControls.querySelector(".zoom-level");
+		if (latencyZoomLevel) {
+			latencyZoomLevel.textContent = zoomPercentage;
+		}
+	}
+}
+
+function createChartWithZoom(ctx: CanvasRenderingContext2D, config: any, monitorId: string, chartType: "uptime" | "latency"): Chart {
+	// Add zoom configuration to the existing config
+	const zoomConfig = {
+		pan: {
+			enabled: true,
+			mode: "x",
+			modifierKey: null, // Allow panning without modifier key
+			onPanStart: ({ chart }: { chart: any }) => {
+				chart.canvas.style.cursor = "grabbing";
+			},
+			onPanComplete: ({ chart }: { chart: any }) => {
+				chart.canvas.style.cursor = "default";
+				syncLinkedChart(monitorId, chartType, chart);
+			},
+		},
+		zoom: {
+			wheel: {
+				enabled: true,
+				speed: 0.1, // Slower zoom for better control
+				modifierKey: null, // Allow zoom without modifier key
+			},
+			pinch: {
+				enabled: true,
+				speed: 0.1,
+			},
+			mode: "x",
+			onZoomStart: ({ chart }: { chart: any }) => {
+				chart.canvas.style.cursor = "zoom-in";
+			},
+			onZoomComplete: ({ chart }: { chart: any }) => {
+				chart.canvas.style.cursor = "default";
+				syncLinkedChart(monitorId, chartType, chart);
+			},
+		},
+		limits: {
+			x: {
+				min: "original",
+				max: "original",
+				minRange: 5, // Minimum 5 data points visible
+			},
+		},
+	};
+
+	// Merge zoom config into plugins
+	if (!config.options.plugins) {
+		config.options.plugins = {};
+	}
+	config.options.plugins.zoom = zoomConfig;
+
+	const chart = new Chart(ctx, config);
+
+	if (!linkedCharts[monitorId]) {
+		linkedCharts[monitorId] = {};
+	}
+	linkedCharts[monitorId][chartType] = chart;
+
+	addZoomControls(chart, monitorId, chartType);
+
+	return chart;
+}
+
+function syncLinkedChart(monitorId: string, sourceType: "uptime" | "latency", sourceChart: Chart): void {
+	const linkedPair = linkedCharts[monitorId];
+	if (!linkedPair) return;
+
+	const targetType = sourceType === "uptime" ? "latency" : "uptime";
+	const targetChart = linkedPair[targetType];
+
+	if (!targetChart) return;
+
+	// Get the current zoom state from source chart
+	const sourceScale = sourceChart.scales.x;
+	const { min, max } = sourceScale!;
+
+	// Apply the same zoom to the target chart
+	targetChart.zoomScale("x", { min, max }, "none");
+
+	// Update zoom level display for both charts
+	updateAllZoomLevels(monitorId);
+}
+
 async function loadMonitorHistory(monitorId: string, period: string): Promise<void> {
 	try {
 		// Update button states
@@ -480,9 +741,13 @@ async function loadMonitorHistory(monitorId: string, period: string): Promise<vo
 
 		if (charts[`uptime-${monitorId}`]) {
 			charts[`uptime-${monitorId}`].destroy();
+			const oldControls = uptimeCtx.canvas.parentElement?.querySelector(".chart-controls");
+			oldControls?.remove();
+			const oldHint = uptimeCtx.canvas.parentElement?.querySelector(".touch-hint");
+			oldHint?.remove();
 		}
 
-		charts[`uptime-${monitorId}`] = new Chart(uptimeCtx, {
+		const uptimeConfig = {
 			type: "bar",
 			data: {
 				labels: labels,
@@ -499,6 +764,10 @@ async function loadMonitorHistory(monitorId: string, period: string): Promise<vo
 			options: {
 				responsive: true,
 				maintainAspectRatio: false,
+				interaction: {
+					mode: "index",
+					intersect: false,
+				},
 				plugins: {
 					legend: {
 						display: false,
@@ -537,7 +806,9 @@ async function loadMonitorHistory(monitorId: string, period: string): Promise<vo
 					},
 				},
 			},
-		});
+		};
+
+		charts[`uptime-${monitorId}`] = createChartWithZoom(uptimeCtx, uptimeConfig, monitorId, "uptime");
 
 		// Create or update latency chart
 		const latencyCtx = (document.getElementById(`latency-chart-${monitorId}`) as HTMLCanvasElement).getContext("2d");
@@ -545,9 +816,13 @@ async function loadMonitorHistory(monitorId: string, period: string): Promise<vo
 
 		if (charts[`latency-${monitorId}`]) {
 			charts[`latency-${monitorId}`].destroy();
+			const oldControls = latencyCtx.canvas.parentElement?.querySelector(".chart-controls");
+			oldControls?.remove();
+			const oldHint = latencyCtx.canvas.parentElement?.querySelector(".touch-hint");
+			oldHint?.remove();
 		}
 
-		charts[`latency-${monitorId}`] = new Chart(latencyCtx, {
+		const latencyConfig = {
 			type: "line",
 			data: {
 				labels: labels,
@@ -583,6 +858,10 @@ async function loadMonitorHistory(monitorId: string, period: string): Promise<vo
 			options: {
 				responsive: true,
 				maintainAspectRatio: false,
+				interaction: {
+					mode: "index",
+					intersect: false,
+				},
 				plugins: {
 					legend: {
 						labels: {
@@ -626,7 +905,9 @@ async function loadMonitorHistory(monitorId: string, period: string): Promise<vo
 					},
 				},
 			},
-		});
+		};
+
+		charts[`latency-${monitorId}`] = createChartWithZoom(latencyCtx, latencyConfig, monitorId, "latency");
 	} catch (error) {
 		console.error("Error loading monitor history:", error);
 	}
