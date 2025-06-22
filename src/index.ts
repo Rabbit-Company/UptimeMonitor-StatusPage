@@ -289,14 +289,14 @@ function renderServiceItem(item: StatusItem, depth: number): HTMLElement {
 							}" data-period="365d" class="period-btn px-3 py-1 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors">365d</button>
 						</div>
 						<!-- Charts -->
-						<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+						<div>
 							<div>
 								<h5 class="text-sm font-medium text-gray-400 mb-2">Uptime</h5>
 								<div class="chart-container">
 									<canvas id="uptime-chart-${item.id}"></canvas>
 								</div>
 							</div>
-							<div>
+							<div class="mt-4">
 								<h5 class="text-sm font-medium text-gray-400 mb-2">Response Time</h5>
 								<div class="chart-container">
 									<canvas id="latency-chart-${item.id}"></canvas>
