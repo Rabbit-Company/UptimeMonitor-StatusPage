@@ -258,37 +258,79 @@ function renderServiceItem(item: StatusItem, depth: number): HTMLElement {
 		const uptimeVal = getUptimeValue(item, selectedUptimePeriod);
 		div.innerHTML = `
 			<div class="bg-gray-900/50 backdrop-blur rounded-xl border border-gray-800 overflow-hidden">
-				<button data-group-id="${item.id}" class="group-toggle w-full px-6 py-4 flex items-center justify-between hover:bg-gray-800/50 transition-colors">
-					<div class="flex items-center space-x-3">
-						<div class="w-2 h-2 rounded-full ${item.status === "up" ? "bg-emerald-500" : "bg-red-500"}"></div>
-						<h3 class="text-lg font-semibold text-white">${item.name}</h3>
+				<button data-group-id="${item.id}" class="group-toggle w-full px-6 py-4 hover:bg-gray-800/50 transition-colors">
+					<!-- Desktop: everything in one row -->
+					<div class="hidden sm:flex items-center justify-between">
+						<div class="flex items-center space-x-3">
+							<div class="w-2 h-2 rounded-full ${item.status === "up" ? "bg-emerald-500" : "bg-red-500"}"></div>
+							<h3 class="text-lg font-semibold text-white">${item.name}</h3>
+						</div>
+						<div class="flex items-center space-x-6">
+							${
+								item.latency !== undefined && item.latency > 0
+									? `
+								<div class="text-right">
+									<p class="text-sm text-gray-400">Latency</p>
+									<p class="text-sm font-semibold text-white">${Math.round(item.latency)}ms</p>
+								</div>
+							`
+									: ""
+							}
+							${
+								uptimeVal !== undefined
+									? `
+								<div class="text-right">
+									<p class="text-sm text-gray-400">Uptime (${selectedUptimePeriod})</p>
+									<p class="text-sm font-semibold ${uptimeVal > 99 ? "text-emerald-400" : uptimeVal > 95 ? "text-yellow-400" : "text-red-400"}">${uptimeVal.toFixed(
+											UPTIME_PRECISION
+									  )}%</p>
+								</div>
+							`
+									: ""
+							}
+							<svg class="w-5 h-5 text-gray-400 transform transition-transform ${isExpanded ? "rotate-180" : ""}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+							</svg>
+						</div>
 					</div>
-					<div class="flex items-center space-x-6">
-						${
-							item.latency !== undefined && item.latency > 0
-								? `
-							<div class="text-right hidden sm:block">
-								<p class="text-sm text-gray-400">Latency</p>
-								<p class="text-sm font-semibold text-white">${Math.round(item.latency)}ms</p>
+
+					<!-- Mobile: title row + metrics below -->
+					<div class="sm:hidden">
+						<div class="flex items-center justify-between">
+							<div class="flex items-center space-x-3 min-w-0 flex-1">
+								<div class="w-2 h-2 rounded-full ${item.status === "up" ? "bg-emerald-500" : "bg-red-500"} flex-shrink-0"></div>
+								<h3 class="text-lg font-semibold text-white truncate">${item.name}</h3>
 							</div>
-						`
-								: ""
-						}
-						${
-							uptimeVal !== undefined
-								? `
-							<div class="text-right">
-								<p class="text-sm text-gray-400">Uptime (${selectedUptimePeriod})</p>
-								<p class="text-sm font-semibold ${uptimeVal > 99 ? "text-emerald-400" : uptimeVal > 95 ? "text-yellow-400" : "text-red-400"}">${uptimeVal.toFixed(
-										UPTIME_PRECISION
-								  )}%</p>
+							<div class="flex-shrink-0 ml-3">
+								<svg class="w-5 h-5 text-gray-400 transform transition-transform ${isExpanded ? "rotate-180" : ""}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+								</svg>
 							</div>
-						`
-								: ""
-						}
-						<svg class="w-5 h-5 text-gray-400 transform transition-transform ${isExpanded ? "rotate-180" : ""}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-						</svg>
+						</div>
+						<div class="flex justify-between mt-3">
+							${
+								item.latency !== undefined && item.latency > 0
+									? `
+								<div class="text-left">
+									<p class="text-xs text-gray-400">Latency</p>
+									<p class="text-sm font-semibold text-white">${Math.round(item.latency)}ms</p>
+								</div>
+							`
+									: "<div></div>"
+							}
+							${
+								uptimeVal !== undefined
+									? `
+								<div class="text-right">
+									<p class="text-xs text-gray-400">Uptime (${selectedUptimePeriod})</p>
+									<p class="text-sm font-semibold ${uptimeVal > 99 ? "text-emerald-400" : uptimeVal > 95 ? "text-yellow-400" : "text-red-400"}">${uptimeVal.toFixed(
+											UPTIME_PRECISION
+									  )}%</p>
+								</div>
+							`
+									: ""
+							}
+						</div>
 					</div>
 				</button>
 				<div id="group-${item.id}" class="${isExpanded ? "" : "hidden"}">
@@ -304,14 +346,15 @@ function renderServiceItem(item: StatusItem, depth: number): HTMLElement {
 		const uptimeVal = getUptimeValue(item, selectedUptimePeriod);
 		div.innerHTML = `
 			<div class="bg-gray-900/50 backdrop-blur rounded-xl border border-gray-800 overflow-hidden">
-				<button data-monitor-id="${item.id}" class="monitor-toggle w-full px-6 py-4 flex items-center justify-between hover:bg-gray-800/50 transition-colors">
-					<div class="flex items-center justify-between w-full">
+				<button data-monitor-id="${item.id}" class="monitor-toggle w-full px-6 py-4 hover:bg-gray-800/50 transition-colors">
+					<!-- Desktop: everything in one row -->
+					<div class="hidden sm:flex items-center justify-between w-full">
 						<div class="flex items-center space-x-3">
 							<div class="w-2 h-2 rounded-full ${item.status === "up" ? "bg-emerald-500" : "bg-red-500"}"></div>
 							<h4 class="font-medium text-white">${item.name}</h4>
 						</div>
 						<div class="flex items-center space-x-6">
-							<div class="text-right hidden sm:block">
+							<div class="text-right">
 								<p class="text-sm text-gray-400">Latency</p>
 								<p class="text-sm font-semibold text-white">${Math.round(item.latency)}ms</p>
 							</div>
@@ -324,6 +367,33 @@ function renderServiceItem(item: StatusItem, depth: number): HTMLElement {
 							<svg class="w-5 h-5 text-gray-400 transform transition-transform ${isExpanded ? "rotate-180" : ""}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
 							</svg>
+						</div>
+					</div>
+
+					<!-- Mobile: title row + metrics below -->
+					<div class="sm:hidden">
+						<div class="flex items-center justify-between">
+							<div class="flex items-center space-x-3 min-w-0 flex-1">
+								<div class="w-2 h-2 rounded-full ${item.status === "up" ? "bg-emerald-500" : "bg-red-500"} flex-shrink-0"></div>
+								<h4 class="font-medium text-white truncate">${item.name}</h4>
+							</div>
+							<div class="flex-shrink-0 ml-3">
+								<svg class="w-5 h-5 text-gray-400 transform transition-transform ${isExpanded ? "rotate-180" : ""}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+								</svg>
+							</div>
+						</div>
+						<div class="flex justify-between mt-3">
+							<div class="text-left">
+								<p class="text-xs text-gray-400">Latency</p>
+								<p class="text-sm font-semibold text-white">${Math.round(item.latency)}ms</p>
+							</div>
+							<div class="text-right">
+								<p class="text-xs text-gray-400">Uptime (${selectedUptimePeriod})</p>
+								<p class="text-sm font-semibold ${uptimeVal! > 99 ? "text-emerald-400" : uptimeVal! > 95 ? "text-yellow-400" : "text-red-400"}">${uptimeVal?.toFixed(
+			UPTIME_PRECISION
+		)}%</p>
+							</div>
 						</div>
 					</div>
 				</button>
