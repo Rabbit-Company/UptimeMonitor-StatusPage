@@ -267,7 +267,7 @@ function renderServiceItem(item: StatusItem, depth: number): HTMLElement {
 						${
 							item.latency !== undefined && item.latency > 0
 								? `
-							<div class="text-right">
+							<div class="text-right hidden sm:block">
 								<p class="text-sm text-gray-400">Latency</p>
 								<p class="text-sm font-semibold text-white">${Math.round(item.latency)}ms</p>
 							</div>
@@ -311,7 +311,7 @@ function renderServiceItem(item: StatusItem, depth: number): HTMLElement {
 							<h4 class="font-medium text-white">${item.name}</h4>
 						</div>
 						<div class="flex items-center space-x-6">
-							<div class="text-right">
+							<div class="text-right hidden sm:block">
 								<p class="text-sm text-gray-400">Latency</p>
 								<p class="text-sm font-semibold text-white">${Math.round(item.latency)}ms</p>
 							</div>
