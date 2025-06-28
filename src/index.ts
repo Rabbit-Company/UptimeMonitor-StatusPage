@@ -222,31 +222,31 @@ function renderPage(): void {
 	}
 
 	// Calculate summary stats
-	let totalUptime = 0;
-	let totalLatency = 0;
 	let servicesUp = 0;
 	let servicesDown = 0;
-	let serviceCount = 0;
 
 	function countServices(items: StatusItem[]): void {
 		items.forEach((item) => {
-			if (item.type === "monitor") {
-				serviceCount++;
-				const uptimeVal = getUptimeValue(item, selectedUptimePeriod) || 0;
-				totalUptime += uptimeVal;
-				totalLatency += item.latency || 0;
+			if (item.children) {
+				countServices(item.children);
+			} else {
+				console.log(item.id);
 				if (item.status === "up") servicesUp++;
 				else servicesDown++;
-			} else if (item.children) {
-				countServices(item.children);
 			}
 		});
 	}
 
 	countServices(statusData.items);
 
-	document.getElementById("uptimeValue")!.textContent = serviceCount > 0 ? `${(totalUptime / serviceCount).toFixed(UPTIME_PRECISION)}%` : "-";
-	document.getElementById("avgLatency")!.textContent = serviceCount > 0 ? `${Math.round(totalLatency / serviceCount)}ms` : "-";
+	const uptimeValues: number[] = statusData.items.map((i) => getUptimeValue(i, selectedUptimePeriod) || 0);
+	const averageUptime = uptimeValues.length > 0 ? (uptimeValues.reduce((sum, val) => sum + val, 0) / uptimeValues.length).toFixed(UPTIME_PRECISION) + "%" : "-";
+
+	const latencyValues: number[] = statusData.items.map((i) => i.latency);
+	const averageLatency = latencyValues.length > 0 ? `${Math.round(latencyValues.reduce((sum, val) => sum + val, 0) / latencyValues.length)}ms` : "-";
+
+	document.getElementById("uptimeValue")!.textContent = averageUptime;
+	document.getElementById("avgLatency")!.textContent = averageLatency;
 	document.getElementById("servicesUp")!.textContent = servicesUp.toString();
 	document.getElementById("servicesDown")!.textContent = servicesDown.toString();
 
