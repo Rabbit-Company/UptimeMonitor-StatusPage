@@ -96,6 +96,93 @@
 			</div>
 		</div>
 
+		<!-- History Modal -->
+		<div id="historyModal" class="fixed inset-0 z-50 hidden">
+			<div class="modal-backdrop fixed inset-0 bg-black/50"></div>
+			<div class="relative flex items-center justify-center min-h-screen p-4">
+				<div class="relative bg-gray-900 rounded-2xl shadow-2xl border border-gray-800 w-full max-w-4xl max-h-[90vh] overflow-hidden">
+					<!-- Modal Header -->
+					<div class="sticky top-0 bg-gray-900 border-b border-gray-800 px-6 py-4 flex items-center justify-between">
+						<div>
+							<h2 id="modalTitle" class="text-xl font-semibold text-white"></h2>
+							<p id="modalSubtitle" class="text-sm text-gray-400 mt-1"></p>
+						</div>
+						<button id="modalCloseBtn" class="p-2 hover:bg-gray-800 rounded-lg transition-colors">
+							<svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+							</svg>
+						</button>
+					</div>
+
+					<!-- Modal Body -->
+					<div class="modal-body-scroll">
+						<div class="p-6">
+							<!-- Time Period Selector -->
+							<div class="flex flex-wrap gap-2 mb-6">
+								<button
+									data-modal-period="1h"
+									class="modal-period-btn px-4 py-2 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors"
+								>
+									1h
+								</button>
+								<button
+									data-modal-period="24h"
+									class="modal-period-btn px-4 py-2 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors"
+								>
+									24h
+								</button>
+								<button
+									data-modal-period="7d"
+									class="modal-period-btn px-4 py-2 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors"
+								>
+									7d
+								</button>
+								<button data-modal-period="30d" class="modal-period-btn px-4 py-2 text-sm rounded-lg bg-gray-700 text-gray-300 transition-colors">30d</button>
+								<button
+									data-modal-period="90d"
+									class="modal-period-btn px-4 py-2 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors"
+								>
+									90d
+								</button>
+								<button
+									data-modal-period="365d"
+									class="modal-period-btn px-4 py-2 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors"
+								>
+									365d
+								</button>
+							</div>
+
+							<!-- Charts -->
+							<div class="space-y-6">
+								<div>
+									<h3 class="text-lg font-medium text-white mb-3">Uptime History</h3>
+									<div class="bg-gray-800/50 rounded-lg p-4">
+										<div class="chart-container-modal">
+											<canvas id="modal-uptime-chart"></canvas>
+										</div>
+									</div>
+								</div>
+
+								<div>
+									<h3 class="text-lg font-medium text-white mb-3">Response Time History</h3>
+									<div class="bg-gray-800/50 rounded-lg p-4">
+										<div class="chart-container-modal">
+											<canvas id="modal-latency-chart"></canvas>
+										</div>
+									</div>
+								</div>
+
+								<!-- Stats Summary -->
+								<div id="modalStats" class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+									<!-- Stats will be populated dynamically -->
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
 		<script type="module" src="config.js"></script>
 		<script type="module" src="index.js"></script>
 	</body>

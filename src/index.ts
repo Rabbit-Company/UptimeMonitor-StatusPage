@@ -40,7 +40,7 @@ interface StatusItem {
 	id: string;
 	type: "group" | "monitor";
 	name: string;
-	status: "up" | "down";
+	status: "up" | "down" | "degraded";
 	latency: number;
 	lastCheck?: string;
 	uptime1h?: number;
@@ -52,8 +52,9 @@ interface StatusItem {
 	children?: StatusItem[];
 }
 
-interface MonitorHistoryData {
-	monitorId: string;
+interface HistoryData {
+	monitorId?: string;
+	groupId?: string;
 	period: string;
 	data: Array<{
 		time: string;
@@ -67,9 +68,10 @@ interface MonitorHistoryData {
 // Global state
 let statusData: StatusData | null = null;
 let selectedUptimePeriod = DEFAULT_PERIOD;
-let charts: Record<string, any> = {};
-let expandedMonitors = new Set<string>();
-const linkedCharts: Record<string, { uptime?: Chart; latency?: Chart }> = {};
+let expandedGroups = new Set<string>();
+let modalCharts: { uptime?: Chart; latency?: Chart } = {};
+let currentModalItem: string | null = null;
+let currentModalType: "group" | "monitor" | null = null;
 
 function changeUptimePeriod(period: string): void {
 	selectedUptimePeriod = period;
@@ -139,7 +141,6 @@ async function init(): Promise<void> {
 		document.getElementById("content")!.classList.remove("hidden");
 
 		setupEventListeners();
-
 		renderPage();
 	} catch (error: any) {
 		console.error("Error loading status data:", error);
@@ -165,23 +166,38 @@ function setupEventListeners(): void {
 			changeUptimePeriod(target.value);
 		});
 	}
+
+	// Modal close handlers
+	const modalBackdrop = document.querySelector(".modal-backdrop");
+	if (modalBackdrop) {
+		modalBackdrop.addEventListener("click", closeHistoryModal);
+	}
+
+	const modalCloseBtn = document.getElementById("modalCloseBtn");
+	if (modalCloseBtn) {
+		modalCloseBtn.addEventListener("click", closeHistoryModal);
+	}
+
+	// Modal period buttons
+	document.querySelectorAll(".modal-period-btn").forEach((btn) => {
+		btn.addEventListener("click", async (e) => {
+			const period = (e.currentTarget as HTMLElement).getAttribute("data-modal-period");
+			if (period && currentModalItem && currentModalType) {
+				await loadModalHistory(currentModalItem, currentModalType, period);
+			}
+		});
+	});
+
+	// Close modal on Escape key
+	document.addEventListener("keydown", (e) => {
+		if (e.key === "Escape") {
+			closeHistoryModal();
+		}
+	});
 }
 
 function renderPage(): void {
 	if (!statusData) return;
-
-	expandedMonitors.forEach((monitorId) => {
-		// Destroy any existing charts
-		if (charts[`uptime-${monitorId}`]) {
-			charts[`uptime-${monitorId}`].destroy();
-			delete charts[`uptime-${monitorId}`];
-		}
-		if (charts[`latency-${monitorId}`]) {
-			charts[`latency-${monitorId}`].destroy();
-			delete charts[`latency-${monitorId}`];
-		}
-	});
-	expandedMonitors.clear();
 
 	document.getElementById("serviceName")!.textContent = statusData.name;
 
@@ -253,19 +269,22 @@ function renderServiceItem(item: StatusItem, depth: number): HTMLElement {
 	div.className = depth > 0 ? "ml-0 lg:ml-8" : "";
 
 	if (item.type === "group") {
-		// Group header
-		const isExpanded = expandedMonitors.has(item.id);
+		// Group
+		const isGroupExpanded = expandedGroups.has(item.id);
 		const uptimeVal = getUptimeValue(item, selectedUptimePeriod);
+		const statusColor = item.status === "up" ? "bg-emerald-500" : item.status === "degraded" ? "bg-yellow-500" : "bg-red-500";
+
 		div.innerHTML = `
 			<div class="bg-gray-900/50 backdrop-blur rounded-xl border border-gray-800 overflow-hidden">
-				<button data-group-id="${item.id}" class="cursor-pointer group-toggle w-full px-6 py-4 hover:bg-gray-800/50 transition-colors">
-					<!-- Desktop: everything in one row -->
-					<div class="hidden sm:flex items-center justify-between">
-						<div class="flex items-center space-x-3">
-							<div class="w-2 h-2 rounded-full ${item.status === "up" ? "bg-emerald-500" : "bg-red-500"}"></div>
-							<h3 class="text-lg font-semibold text-white">${item.name}</h3>
+				<div class="px-6 py-4">
+					<div class="flex items-center justify-between">
+						<div class="flex items-center space-x-3 min-w-0 flex-1">
+							<div class="w-2 h-2 rounded-full ${statusColor} flex-shrink-0"></div>
+							<h3 class="text-lg font-semibold text-white truncate">${item.name}</h3>
 						</div>
-						<div class="flex items-center space-x-6">
+
+						<!-- Desktop metrics -->
+						<div class="hidden sm:flex items-center space-x-6">
 							${
 								item.latency !== undefined && item.latency > 0
 									? `
@@ -288,52 +307,54 @@ function renderServiceItem(item: StatusItem, depth: number): HTMLElement {
 							`
 									: ""
 							}
-							<svg class="w-5 h-5 text-gray-400 transform transition-transform ${isExpanded ? "rotate-180" : ""}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-							</svg>
+						</div>
+
+						<!-- Action buttons -->
+						<div class="flex items-center space-x-2 ml-4">
+							<button data-history-id="${item.id}" data-history-type="group" data-history-name="${
+			item.name
+		}" class="history-btn p-2 hover:bg-gray-800 rounded-lg transition-colors" title="View History">
+								<svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+								</svg>
+							</button>
+							<button data-group-id="${item.id}" class="group-toggle p-2 hover:bg-gray-800 rounded-lg transition-colors" title="Toggle Group">
+								<svg class="w-5 h-5 text-gray-400 transform transition-transform ${isGroupExpanded ? "rotate-180" : ""}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+								</svg>
+							</button>
 						</div>
 					</div>
 
-					<!-- Mobile: title row + metrics below -->
-					<div class="sm:hidden">
-						<div class="flex items-center justify-between">
-							<div class="flex items-center space-x-3 min-w-0 flex-1">
-								<div class="w-2 h-2 rounded-full ${item.status === "up" ? "bg-emerald-500" : "bg-red-500"} flex-shrink-0"></div>
-								<h3 class="text-lg font-semibold text-white truncate">${item.name}</h3>
+					<!-- Mobile metrics -->
+					<div class="sm:hidden flex justify-between mt-3">
+						${
+							item.latency !== undefined && item.latency > 0
+								? `
+							<div class="text-left">
+								<p class="text-xs text-gray-400">Latency</p>
+								<p class="text-sm font-semibold text-white">${Math.round(item.latency)}ms</p>
 							</div>
-							<div class="flex-shrink-0 ml-3">
-								<svg class="w-5 h-5 text-gray-400 transform transition-transform ${isExpanded ? "rotate-180" : ""}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-								</svg>
+						`
+								: "<div></div>"
+						}
+						${
+							uptimeVal !== undefined
+								? `
+							<div class="text-right">
+								<p class="text-xs text-gray-400">Uptime (${selectedUptimePeriod})</p>
+								<p class="text-sm font-semibold ${uptimeVal > 99 ? "text-emerald-400" : uptimeVal > 95 ? "text-yellow-400" : "text-red-400"}">${uptimeVal.toFixed(
+										UPTIME_PRECISION
+								  )}%</p>
 							</div>
-						</div>
-						<div class="flex justify-between mt-3">
-							${
-								item.latency !== undefined && item.latency > 0
-									? `
-								<div class="text-left">
-									<p class="text-xs text-gray-400">Latency</p>
-									<p class="text-sm font-semibold text-white">${Math.round(item.latency)}ms</p>
-								</div>
-							`
-									: "<div></div>"
-							}
-							${
-								uptimeVal !== undefined
-									? `
-								<div class="text-right">
-									<p class="text-xs text-gray-400">Uptime (${selectedUptimePeriod})</p>
-									<p class="text-sm font-semibold ${uptimeVal > 99 ? "text-emerald-400" : uptimeVal > 95 ? "text-yellow-400" : "text-red-400"}">${uptimeVal.toFixed(
-											UPTIME_PRECISION
-									  )}%</p>
-								</div>
-							`
-									: ""
-							}
-						</div>
+						`
+								: ""
+						}
 					</div>
-				</button>
-				<div id="group-${item.id}" class="${isExpanded ? "" : "hidden"}">
+				</div>
+
+				<!-- Group children -->
+				<div id="group-${item.id}" class="${isGroupExpanded ? "" : "hidden"}">
 					<div class="px-6 py-4 border-t border-gray-800 space-y-4">
 						${item.children?.map((child) => renderServiceItem(child, depth + 1).outerHTML).join("") || ""}
 					</div>
@@ -341,19 +362,19 @@ function renderServiceItem(item: StatusItem, depth: number): HTMLElement {
 			</div>
 		`;
 	} else if (item.type === "monitor") {
-		// Monitor item
-		const isExpanded = expandedMonitors.has(item.id);
+		// Monitor
 		const uptimeVal = getUptimeValue(item, selectedUptimePeriod);
 		div.innerHTML = `
 			<div class="bg-gray-900/50 backdrop-blur rounded-xl border border-gray-800 overflow-hidden">
-				<button data-monitor-id="${item.id}" class="cursor-pointer monitor-toggle w-full px-6 py-4 hover:bg-gray-800/50 transition-colors">
-					<!-- Desktop: everything in one row -->
-					<div class="hidden sm:flex items-center justify-between w-full">
-						<div class="flex items-center space-x-3">
-							<div class="w-2 h-2 rounded-full ${item.status === "up" ? "bg-emerald-500" : "bg-red-500"}"></div>
-							<h4 class="font-medium text-white">${item.name}</h4>
+				<div class="px-6 py-4">
+					<div class="flex items-center justify-between">
+						<div class="flex items-center space-x-3 min-w-0 flex-1">
+							<div class="w-2 h-2 rounded-full ${item.status === "up" ? "bg-emerald-500" : "bg-red-500"} flex-shrink-0"></div>
+							<h4 class="font-medium text-white truncate">${item.name}</h4>
 						</div>
-						<div class="flex items-center space-x-6">
+
+						<!-- Desktop metrics -->
+						<div class="hidden sm:flex items-center space-x-6">
 							<div class="text-right">
 								<p class="text-sm text-gray-400">Latency</p>
 								<p class="text-sm font-semibold text-white">${Math.round(item.latency)}ms</p>
@@ -364,95 +385,31 @@ function renderServiceItem(item: StatusItem, depth: number): HTMLElement {
 			UPTIME_PRECISION
 		)}%</p>
 							</div>
-							<svg class="w-5 h-5 text-gray-400 transform transition-transform ${isExpanded ? "rotate-180" : ""}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-							</svg>
+						</div>
+
+						<!-- History button -->
+						<div class="ml-4">
+							<button data-history-id="${item.id}" data-history-type="monitor" data-history-name="${
+			item.name
+		}" class="history-btn p-2 hover:bg-gray-800 rounded-lg transition-colors" title="View History">
+								<svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+								</svg>
+							</button>
 						</div>
 					</div>
 
-					<!-- Mobile: title row + metrics below -->
-					<div class="sm:hidden">
-						<div class="flex items-center justify-between">
-							<div class="flex items-center space-x-3 min-w-0 flex-1">
-								<div class="w-2 h-2 rounded-full ${item.status === "up" ? "bg-emerald-500" : "bg-red-500"} flex-shrink-0"></div>
-								<h4 class="font-medium text-white truncate">${item.name}</h4>
-							</div>
-							<div class="flex-shrink-0 ml-3">
-								<svg class="w-5 h-5 text-gray-400 transform transition-transform ${isExpanded ? "rotate-180" : ""}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-								</svg>
-							</div>
+					<!-- Mobile metrics -->
+					<div class="sm:hidden flex justify-between mt-3">
+						<div class="text-left">
+							<p class="text-xs text-gray-400">Latency</p>
+							<p class="text-sm font-semibold text-white">${Math.round(item.latency)}ms</p>
 						</div>
-						<div class="flex justify-between mt-3">
-							<div class="text-left">
-								<p class="text-xs text-gray-400">Latency</p>
-								<p class="text-sm font-semibold text-white">${Math.round(item.latency)}ms</p>
-							</div>
-							<div class="text-right">
-								<p class="text-xs text-gray-400">Uptime (${selectedUptimePeriod})</p>
-								<p class="text-sm font-semibold ${uptimeVal! > 99 ? "text-emerald-400" : uptimeVal! > 95 ? "text-yellow-400" : "text-red-400"}">${uptimeVal?.toFixed(
+						<div class="text-right">
+							<p class="text-xs text-gray-400">Uptime (${selectedUptimePeriod})</p>
+							<p class="text-sm font-semibold ${uptimeVal! > 99 ? "text-emerald-400" : uptimeVal! > 95 ? "text-yellow-400" : "text-red-400"}">${uptimeVal?.toFixed(
 			UPTIME_PRECISION
 		)}%</p>
-							</div>
-						</div>
-					</div>
-				</button>
-				<div id="monitor-${item.id}" class="${isExpanded ? "" : "hidden"}">
-					<div class="px-6 py-4 border-t border-gray-800">
-						<!-- Time period selector -->
-						<div class="flex space-x-2 mb-4">
-							<button data-monitor-id="${
-								item.id
-							}" data-period="1h" class="cursor-pointer period-btn px-3 py-1 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors">1h</button>
-							<button data-monitor-id="${
-								item.id
-							}" data-period="24h" class="cursor-pointer period-btn px-3 py-1 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors">24h</button>
-							<button data-monitor-id="${
-								item.id
-							}" data-period="7d" class="cursor-pointer period-btn px-3 py-1 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors">7d</button>
-							<button data-monitor-id="${
-								item.id
-							}" data-period="30d" class="cursor-pointer period-btn px-3 py-1 text-sm rounded-lg bg-gray-700 text-gray-300 transition-colors">30d</button>
-							<button data-monitor-id="${
-								item.id
-							}" data-period="90d" class="cursor-pointer period-btn px-3 py-1 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors">90d</button>
-							<button data-monitor-id="${
-								item.id
-							}" data-period="365d" class="cursor-pointer period-btn px-3 py-1 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors">365d</button>
-						</div>
-						<!-- Charts -->
-						<div>
-							<div>
-								<h5 class="text-sm font-medium text-gray-400 mb-2">Uptime</h5>
-								<div class="chart-container">
-									<canvas id="uptime-chart-${item.id}"></canvas>
-								</div>
-							</div>
-							<div class="mt-4">
-								<h5 class="text-sm font-medium text-gray-400 mb-2">Response Time</h5>
-								<div class="chart-container">
-									<canvas id="latency-chart-${item.id}"></canvas>
-								</div>
-							</div>
-						</div>
-						<!-- Additional info -->
-						<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-							<div>
-								<p class="text-xs text-gray-500">Last Check</p>
-								<p class="text-sm text-gray-300">${getDateTime(item.lastCheck!)}</p>
-							</div>
-							<div>
-								<p class="text-xs text-gray-500">7 Day Uptime</p>
-								<p class="text-sm text-gray-300">${item.uptime7d?.toFixed(UPTIME_PRECISION)}%</p>
-							</div>
-							<div>
-								<p class="text-xs text-gray-500">30 Day Uptime</p>
-								<p class="text-sm text-gray-300">${item.uptime30d?.toFixed(UPTIME_PRECISION)}%</p>
-							</div>
-							<div>
-								<p class="text-xs text-gray-500">90 Day Uptime</p>
-								<p class="text-sm text-gray-300">${item.uptime90d?.toFixed(UPTIME_PRECISION)}%</p>
-							</div>
 						</div>
 					</div>
 				</div>
@@ -464,28 +421,24 @@ function renderServiceItem(item: StatusItem, depth: number): HTMLElement {
 }
 
 function addServiceEventListeners(): void {
+	// Group toggle buttons
 	document.querySelectorAll(".group-toggle").forEach((button) => {
 		button.addEventListener("click", (e) => {
-			const btn = e.currentTarget as HTMLElement;
-			const groupId = btn.getAttribute("data-group-id");
+			const groupId = (e.currentTarget as HTMLElement).getAttribute("data-group-id");
 			if (groupId) toggleGroup(groupId);
 		});
 	});
 
-	document.querySelectorAll(".monitor-toggle").forEach((button) => {
+	// History buttons
+	document.querySelectorAll(".history-btn").forEach((button) => {
 		button.addEventListener("click", async (e) => {
 			const btn = e.currentTarget as HTMLElement;
-			const monitorId = btn.getAttribute("data-monitor-id");
-			if (monitorId) await toggleMonitor(monitorId);
-		});
-	});
-
-	document.querySelectorAll(".period-btn").forEach((button) => {
-		button.addEventListener("click", async (e) => {
-			const btn = e.currentTarget as HTMLElement;
-			const monitorId = btn.getAttribute("data-monitor-id");
-			const period = btn.getAttribute("data-period");
-			if (monitorId && period) await loadMonitorHistory(monitorId, period);
+			const itemId = btn.getAttribute("data-history-id");
+			const itemType = btn.getAttribute("data-history-type") as "group" | "monitor";
+			const itemName = btn.getAttribute("data-history-name");
+			if (itemId && itemType && itemName) {
+				await openHistoryModal(itemId, itemType, itemName);
+			}
 		});
 	});
 }
@@ -494,301 +447,75 @@ function toggleGroup(groupId: string): void {
 	const element = document.getElementById(`group-${groupId}`);
 	if (!element) return;
 
-	if (expandedMonitors.has(groupId)) {
-		expandedMonitors.delete(groupId);
+	if (expandedGroups.has(groupId)) {
+		expandedGroups.delete(groupId);
 		element.classList.add("hidden");
 	} else {
-		expandedMonitors.add(groupId);
+		expandedGroups.add(groupId);
 		element.classList.remove("hidden");
 	}
 
 	// Update chevron
-	const button = element.previousElementSibling as HTMLElement;
-	const chevron = button.querySelector("svg");
+	const button = document.querySelector(`[data-group-id="${groupId}"]`);
+	const chevron = button?.querySelector("svg");
 	chevron?.classList.toggle("rotate-180");
 }
 
-async function toggleMonitor(monitorId: string): Promise<void> {
-	const element = document.getElementById(`monitor-${monitorId}`);
-	if (!element) return;
+// Modal functions
+async function openHistoryModal(itemId: string, itemType: "group" | "monitor", itemName: string): Promise<void> {
+	currentModalItem = itemId;
+	currentModalType = itemType;
 
-	if (expandedMonitors.has(monitorId)) {
-		expandedMonitors.delete(monitorId);
-		element.classList.add("hidden");
+	// Update modal title
+	document.getElementById("modalTitle")!.textContent = itemName;
+	document.getElementById("modalSubtitle")!.textContent = `${itemType === "group" ? "Group" : "Monitor"} History`;
 
-		// Destroy charts
-		if (charts[`uptime-${monitorId}`]) {
-			charts[`uptime-${monitorId}`].destroy();
-			delete charts[`uptime-${monitorId}`];
-		}
-		if (charts[`latency-${monitorId}`]) {
-			charts[`latency-${monitorId}`].destroy();
-			delete charts[`latency-${monitorId}`];
-		}
-	} else {
-		expandedMonitors.add(monitorId);
-		element.classList.remove("hidden");
+	// Show modal
+	document.getElementById("historyModal")!.classList.remove("hidden");
+	document.body.style.overflow = "hidden";
 
-		await loadMonitorHistory(monitorId, selectedUptimePeriod);
-	}
-
-	// Update chevron
-	const button = element.previousElementSibling as HTMLElement;
-	const chevron = button.querySelector("svg");
-	chevron?.classList.toggle("rotate-180");
+	// Load default period
+	await loadModalHistory(itemId, itemType, selectedUptimePeriod);
 }
 
-function addTouchHint(container: HTMLElement): void {
-	const hintDiv = document.createElement("div");
-	hintDiv.className = "touch-hint absolute bottom-2 left-2 text-xs text-gray-500 bg-gray-800/90 backdrop-blur rounded px-2 py-1";
-	hintDiv.innerHTML = `
-		<span class="flex items-center space-x-1">
-			<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11"></path>
-			</svg>
-			<span>Pinch to zoom • Drag to pan</span>
-		</span>
-  `;
-	container.appendChild(hintDiv);
+function closeHistoryModal(): void {
+	document.getElementById("historyModal")!.classList.add("hidden");
+	document.body.style.overflow = "auto";
 
-	setTimeout(() => {
-		hintDiv.style.transition = "opacity 0.5s";
-		hintDiv.style.opacity = "0";
-		setTimeout(() => hintDiv.remove(), 500);
-	}, 5000);
+	// Destroy charts
+	if (modalCharts.uptime) {
+		modalCharts.uptime.destroy();
+		modalCharts.uptime = undefined;
+	}
+	if (modalCharts.latency) {
+		modalCharts.latency.destroy();
+		modalCharts.latency = undefined;
+	}
+
+	currentModalItem = null;
+	currentModalType = null;
 }
 
-function addZoomControls(chart: Chart, monitorId: string, chartType: "uptime" | "latency"): void {
-	const canvas = chart.canvas;
-	const container = canvas.parentElement;
-	if (!container) return;
-
-	// Create controls container with unique ID for this chart
-	const controlsDiv = document.createElement("div");
-	controlsDiv.className = "chart-controls absolute top-2 right-2 flex items-center space-x-2 bg-gray-800/90 backdrop-blur rounded-lg p-1";
-	controlsDiv.id = `controls-${monitorId}-${chartType}`;
-	controlsDiv.innerHTML = `
-		<button class="zoom-in p-1.5 hover:bg-gray-700 rounded transition-colors" title="Zoom In">
-			<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"></path>
-			</svg>
-		</button>
-		<button class="zoom-out p-1.5 hover:bg-gray-700 rounded transition-colors" title="Zoom Out">
-			<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7"></path>
-			</svg>
-		</button>
-		<button class="zoom-reset p-1.5 hover:bg-gray-700 rounded transition-colors" title="Reset Zoom">
-			<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-			</svg>
-		</button>
-		<div class="zoom-level hidden sm:block px-2 py-1 text-xs text-gray-400">100%</div>
-  `;
-
-	// Make container relative for absolute positioning
-	container.style.position = "relative";
-	container.appendChild(controlsDiv);
-
-	// Add event listeners
-	const zoomInBtn = controlsDiv.querySelector(".zoom-in") as HTMLButtonElement;
-	const zoomOutBtn = controlsDiv.querySelector(".zoom-out") as HTMLButtonElement;
-	const zoomResetBtn = controlsDiv.querySelector(".zoom-reset") as HTMLButtonElement;
-
-	zoomInBtn.addEventListener("click", () => {
-		zoomLinkedCharts(monitorId, 1.1);
-	});
-
-	zoomOutBtn.addEventListener("click", () => {
-		zoomLinkedCharts(monitorId, 0.9);
-	});
-
-	zoomResetBtn.addEventListener("click", () => {
-		resetLinkedCharts(monitorId);
-	});
-
-	// Add touch gesture hints (only on first chart to avoid duplication)
-	if ("ontouchstart" in window && chartType === "uptime") {
-		addTouchHint(container);
-	}
-
-	// Add visual feedback for zoom/pan
-	canvas.addEventListener("wheel", () => {
-		updateAllZoomLevels(monitorId);
-	});
-
-	canvas.addEventListener("mousedown", () => {
-		canvas.style.cursor = "grabbing";
-	});
-
-	canvas.addEventListener("mouseup", () => {
-		canvas.style.cursor = "grab";
-	});
-
-	canvas.addEventListener("mouseleave", () => {
-		canvas.style.cursor = "default";
-	});
-
-	// Set initial cursor
-	canvas.style.cursor = "grab";
-}
-
-function zoomLinkedCharts(monitorId: string, zoomFactor: number): void {
-	const linkedPair = linkedCharts[monitorId];
-	if (!linkedPair) return;
-
-	if (linkedPair.uptime) {
-		linkedPair.uptime.zoom(zoomFactor);
-	}
-	if (linkedPair.latency) {
-		linkedPair.latency.zoom(zoomFactor);
-	}
-
-	updateAllZoomLevels(monitorId);
-}
-
-function resetLinkedCharts(monitorId: string): void {
-	const linkedPair = linkedCharts[monitorId];
-	if (!linkedPair) return;
-
-	if (linkedPair.uptime) {
-		linkedPair.uptime.resetZoom();
-	}
-
-	if (linkedPair.latency) {
-		linkedPair.latency.resetZoom();
-	}
-
-	updateAllZoomLevels(monitorId);
-}
-
-function updateAllZoomLevels(monitorId: string): void {
-	const linkedPair = linkedCharts[monitorId];
-	if (!linkedPair || !linkedPair.uptime) return;
-
-	const zoomLevel = linkedPair.uptime.getZoomLevel();
-	const zoomPercentage = `${Math.round(zoomLevel * 100)}%`;
-
-	// Update uptime chart zoom level display
-	const uptimeControls = document.getElementById(`controls-${monitorId}-uptime`);
-	if (uptimeControls) {
-		const uptimeZoomLevel = uptimeControls.querySelector(".zoom-level");
-		if (uptimeZoomLevel) {
-			uptimeZoomLevel.textContent = zoomPercentage;
-		}
-	}
-
-	// Update latency chart zoom level display
-	const latencyControls = document.getElementById(`controls-${monitorId}-latency`);
-	if (latencyControls) {
-		const latencyZoomLevel = latencyControls.querySelector(".zoom-level");
-		if (latencyZoomLevel) {
-			latencyZoomLevel.textContent = zoomPercentage;
-		}
-	}
-}
-
-function createChartWithZoom(ctx: CanvasRenderingContext2D, config: any, monitorId: string, chartType: "uptime" | "latency"): Chart {
-	// Add zoom configuration to the existing config
-	const zoomConfig = {
-		pan: {
-			enabled: true,
-			mode: "x",
-			modifierKey: null, // Allow panning without modifier key
-			onPanStart: ({ chart }: { chart: any }) => {
-				chart.canvas.style.cursor = "grabbing";
-			},
-			onPanComplete: ({ chart }: { chart: any }) => {
-				chart.canvas.style.cursor = "default";
-				syncLinkedChart(monitorId, chartType, chart);
-			},
-		},
-		zoom: {
-			wheel: {
-				enabled: true,
-				speed: 0.1, // Slower zoom for better control
-				modifierKey: null, // Allow zoom without modifier key
-			},
-			pinch: {
-				enabled: true,
-				speed: 0.1,
-			},
-			mode: "x",
-			onZoomStart: ({ chart }: { chart: any }) => {
-				chart.canvas.style.cursor = "zoom-in";
-			},
-			onZoomComplete: ({ chart }: { chart: any }) => {
-				chart.canvas.style.cursor = "default";
-				syncLinkedChart(monitorId, chartType, chart);
-			},
-		},
-		limits: {
-			x: {
-				min: "original",
-				max: "original",
-				minRange: 5, // Minimum 5 data points visible
-			},
-		},
-	};
-
-	// Merge zoom config into plugins
-	if (!config.options.plugins) {
-		config.options.plugins = {};
-	}
-	config.options.plugins.zoom = zoomConfig;
-
-	const chart = new Chart(ctx, config);
-
-	if (!linkedCharts[monitorId]) {
-		linkedCharts[monitorId] = {};
-	}
-	linkedCharts[monitorId][chartType] = chart;
-
-	addZoomControls(chart, monitorId, chartType);
-
-	return chart;
-}
-
-function syncLinkedChart(monitorId: string, sourceType: "uptime" | "latency", sourceChart: Chart): void {
-	const linkedPair = linkedCharts[monitorId];
-	if (!linkedPair) return;
-
-	const targetType = sourceType === "uptime" ? "latency" : "uptime";
-	const targetChart = linkedPair[targetType];
-
-	if (!targetChart) return;
-
-	// Get the current zoom state from source chart
-	const sourceScale = sourceChart.scales.x;
-	const { min, max } = sourceScale!;
-
-	// Apply the same zoom to the target chart
-	targetChart.zoomScale("x", { min, max }, "none");
-
-	// Update zoom level display for both charts
-	updateAllZoomLevels(monitorId);
-}
-
-async function loadMonitorHistory(monitorId: string, period: string): Promise<void> {
+async function loadModalHistory(itemId: string, itemType: "group" | "monitor", period: string): Promise<void> {
 	try {
 		// Update button states
-		const container = document.getElementById(`monitor-${monitorId}`);
-		if (!container) return;
-
-		const buttons = container.querySelectorAll(".period-btn");
-		buttons.forEach((btn) => {
-			const btnPeriod = btn.getAttribute("data-period");
+		document.querySelectorAll(".modal-period-btn").forEach((btn) => {
+			const btnPeriod = btn.getAttribute("data-modal-period");
 			if (btnPeriod === period) {
-				btn.className = "cursor-pointer period-btn px-3 py-1 text-sm rounded-lg bg-gray-700 text-gray-300 transition-colors";
+				btn.className = "modal-period-btn px-4 py-2 text-sm rounded-lg bg-gray-700 text-gray-300 transition-colors";
 			} else {
-				btn.className = "cursor-pointer period-btn px-3 py-1 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors";
+				btn.className = "modal-period-btn px-4 py-2 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors";
 			}
 		});
 
-		const response = await fetch(`${BACKEND_URL}/v1/monitors/${monitorId}/history?period=${period}`);
-		if (!response.ok) throw new Error("Failed to fetch monitor history");
+		// Fetch history
+		const endpoint =
+			itemType === "monitor" ? `${BACKEND_URL}/v1/monitors/${itemId}/history?period=${period}` : `${BACKEND_URL}/v1/groups/${itemId}/history?period=${period}`;
 
-		const historyData: MonitorHistoryData = await response.json();
+		const response = await fetch(endpoint);
+		if (!response.ok) throw new Error(`Failed to fetch ${itemType} history`);
+
+		const historyData: HistoryData = await response.json();
 
 		// Process data
 		const labels = historyData.data.map((d) => {
@@ -807,19 +534,13 @@ async function loadMonitorHistory(monitorId: string, period: string): Promise<vo
 		const minLatencyData = historyData.data.map((d) => d.min_latency);
 		const maxLatencyData = historyData.data.map((d) => d.max_latency);
 
-		// Create or update uptime chart
-		const uptimeCtx = (document.getElementById(`uptime-chart-${monitorId}`) as HTMLCanvasElement).getContext("2d");
-		if (!uptimeCtx) return;
+		// Destroy existing charts
+		if (modalCharts.uptime) modalCharts.uptime.destroy();
+		if (modalCharts.latency) modalCharts.latency.destroy();
 
-		if (charts[`uptime-${monitorId}`]) {
-			charts[`uptime-${monitorId}`].destroy();
-			const oldControls = uptimeCtx.canvas.parentElement?.querySelector(".chart-controls");
-			oldControls?.remove();
-			const oldHint = uptimeCtx.canvas.parentElement?.querySelector(".touch-hint");
-			oldHint?.remove();
-		}
-
-		const uptimeConfig = {
+		// Create uptime chart
+		const uptimeCtx = (document.getElementById("modal-uptime-chart") as HTMLCanvasElement).getContext("2d")!;
+		modalCharts.uptime = new Chart(uptimeCtx, {
 			type: "bar",
 			data: {
 				labels: labels,
@@ -846,9 +567,25 @@ async function loadMonitorHistory(monitorId: string, period: string): Promise<vo
 					},
 					tooltip: {
 						callbacks: {
-							label: function (context: any) {
+							label: function (context) {
 								return `Uptime: ${context.parsed.y.toFixed(UPTIME_PRECISION)}%`;
 							},
+						},
+					},
+					zoom: {
+						pan: {
+							enabled: true,
+							mode: "x",
+						},
+						zoom: {
+							wheel: {
+								enabled: true,
+								speed: 0.1,
+							},
+							pinch: {
+								enabled: true,
+							},
+							mode: "x",
 						},
 					},
 				},
@@ -857,7 +594,7 @@ async function loadMonitorHistory(monitorId: string, period: string): Promise<vo
 						beginAtZero: true,
 						max: 100,
 						ticks: {
-							callback: function (value: any) {
+							callback: function (value) {
 								return value + "%";
 							},
 							color: "#9CA3AF",
@@ -878,23 +615,11 @@ async function loadMonitorHistory(monitorId: string, period: string): Promise<vo
 					},
 				},
 			},
-		};
+		});
 
-		charts[`uptime-${monitorId}`] = createChartWithZoom(uptimeCtx, uptimeConfig, monitorId, "uptime");
-
-		// Create or update latency chart
-		const latencyCtx = (document.getElementById(`latency-chart-${monitorId}`) as HTMLCanvasElement).getContext("2d");
-		if (!latencyCtx) return;
-
-		if (charts[`latency-${monitorId}`]) {
-			charts[`latency-${monitorId}`].destroy();
-			const oldControls = latencyCtx.canvas.parentElement?.querySelector(".chart-controls");
-			oldControls?.remove();
-			const oldHint = latencyCtx.canvas.parentElement?.querySelector(".touch-hint");
-			oldHint?.remove();
-		}
-
-		const latencyConfig = {
+		// Create latency chart
+		const latencyCtx = (document.getElementById("modal-latency-chart") as HTMLCanvasElement).getContext("2d")!;
+		modalCharts.latency = new Chart(latencyCtx, {
 			type: "line",
 			data: {
 				labels: labels,
@@ -946,9 +671,25 @@ async function loadMonitorHistory(monitorId: string, period: string): Promise<vo
 						mode: "index",
 						intersect: false,
 						callbacks: {
-							label: function (context: any) {
+							label: function (context) {
 								return `${context.dataset.label}: ${Math.round(context.parsed.y)}ms`;
 							},
+						},
+					},
+					zoom: {
+						pan: {
+							enabled: true,
+							mode: "x",
+						},
+						zoom: {
+							wheel: {
+								enabled: true,
+								speed: 0.1,
+							},
+							pinch: {
+								enabled: true,
+							},
+							mode: "x",
 						},
 					},
 				},
@@ -956,7 +697,7 @@ async function loadMonitorHistory(monitorId: string, period: string): Promise<vo
 					y: {
 						beginAtZero: true,
 						ticks: {
-							callback: function (value: any) {
+							callback: function (value) {
 								return value + "ms";
 							},
 							color: "#9CA3AF",
@@ -977,12 +718,89 @@ async function loadMonitorHistory(monitorId: string, period: string): Promise<vo
 					},
 				},
 			},
+		});
+
+		const syncCharts = (sourceChart: Chart) => {
+			const { min, max } = sourceChart.scales.x!;
+			if (sourceChart === modalCharts.uptime && modalCharts.latency) {
+				modalCharts.latency.zoomScale("x", { min, max }, "none");
+			} else if (sourceChart === modalCharts.latency && modalCharts.uptime) {
+				modalCharts.uptime.zoomScale("x", { min, max }, "none");
+			}
 		};
 
-		charts[`latency-${monitorId}`] = createChartWithZoom(latencyCtx, latencyConfig, monitorId, "latency");
+		// Set up event handlers for both charts
+		if (modalCharts.uptime) {
+			modalCharts.uptime.options.plugins!.zoom!.zoom!.onZoomComplete = function ({ chart }) {
+				syncCharts(chart);
+			};
+			modalCharts.uptime.options.plugins!.zoom!.pan!.onPanComplete = function ({ chart }) {
+				syncCharts(chart);
+			};
+		}
+
+		if (modalCharts.latency) {
+			modalCharts.latency.options.plugins!.zoom!.zoom!.onZoomComplete = function ({ chart }) {
+				syncCharts(chart);
+			};
+			modalCharts.latency.options.plugins!.zoom!.pan!.onPanComplete = function ({ chart }) {
+				syncCharts(chart);
+			};
+		}
+
+		// Update stats
+		updateModalStats(itemId, itemType);
 	} catch (error) {
-		console.error("Error loading monitor history:", error);
+		console.error(`Error loading ${itemType} history:`, error);
 	}
 }
 
+function updateModalStats(itemId: string, itemType: string): void {
+	const item = findItemById(itemId);
+	if (!item) return;
+
+	const statsHtml = `
+		<div class="bg-gray-800/50 rounded-lg p-4">
+			<p class="text-xs text-gray-400 mb-1">Last Check</p>
+			<p class="text-sm text-gray-300">${item.lastCheck ? getDateTime(item.lastCheck) : "-"}</p>
+		</div>
+		<div class="bg-gray-800/50 rounded-lg p-4">
+			<p class="text-xs text-gray-400 mb-1">7 Day Uptime</p>
+			<p class="text-sm font-semibold ${(item.uptime7d || 0) > 99 ? "text-emerald-400" : (item.uptime7d || 0) > 95 ? "text-yellow-400" : "text-red-400"}">
+				${item.uptime7d?.toFixed(UPTIME_PRECISION) || "-"}%
+			</p>
+		</div>
+		<div class="bg-gray-800/50 rounded-lg p-4">
+			<p class="text-xs text-gray-400 mb-1">30 Day Uptime</p>
+			<p class="text-sm font-semibold ${(item.uptime30d || 0) > 99 ? "text-emerald-400" : (item.uptime30d || 0) > 95 ? "text-yellow-400" : "text-red-400"}">
+				${item.uptime30d?.toFixed(UPTIME_PRECISION) || "-"}%
+			</p>
+		</div>
+		<div class="bg-gray-800/50 rounded-lg p-4">
+			<p class="text-xs text-gray-400 mb-1">90 Day Uptime</p>
+			<p class="text-sm font-semibold ${(item.uptime90d || 0) > 99 ? "text-emerald-400" : (item.uptime90d || 0) > 95 ? "text-yellow-400" : "text-red-400"}">
+				${item.uptime90d?.toFixed(UPTIME_PRECISION) || "-"}%
+			</p>
+		</div>
+	`;
+
+	document.getElementById("modalStats")!.innerHTML = statsHtml;
+}
+
+function findItemById(itemId: string, items: StatusItem[] = statusData?.items || []): StatusItem | null {
+	for (const item of items) {
+		if (item.id === itemId) return item;
+		if (item.children) {
+			const found = findItemById(itemId, item.children);
+			if (found) return found;
+		}
+	}
+	return null;
+}
+
+// Window exports for HTML onclick handlers
+(window as any).openHistoryModal = openHistoryModal;
+(window as any).closeHistoryModal = closeHistoryModal;
+
+// Start the application
 init();

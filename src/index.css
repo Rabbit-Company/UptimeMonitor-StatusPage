@@ -1,5 +1,33 @@
 @import "tailwindcss";
 
+/*
+	Scroll bar
+*/
+
+html {
+	scroll-behavior: smooth;
+}
+
+::-webkit-scrollbar {
+	width: 8px;
+}
+
+::-webkit-scrollbar-track {
+	background: #161b22;
+}
+
+::-webkit-scrollbar-thumb {
+	background: #1e2939;
+}
+
+::-webkit-scrollbar-thumb:hover {
+	background: #374151;
+}
+
+/*
+	Pulse Animation
+*/
+
 @keyframes pulse {
 	0%,
 	100% {
@@ -9,11 +37,29 @@
 		opacity: 0.5;
 	}
 }
+
 .animate-pulse-slow {
 	animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
-.chart-container {
+
+/*
+	Modal
+*/
+
+.modal-body-scroll {
+	max-height: calc(90vh - 80px);
+	overflow-y: auto;
+}
+
+.chart-container-modal {
 	position: relative;
-	height: 200px;
-	width: 100%;
+	height: 250px;
+}
+
+.body-no-scroll {
+	overflow: hidden;
+}
+
+.body-scroll {
+	overflow: auto;
 }
