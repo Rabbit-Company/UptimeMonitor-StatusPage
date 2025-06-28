@@ -280,91 +280,93 @@ function renderServiceItem(item: StatusItem, depth: number): HTMLElement {
 
 		div.innerHTML = `
 			<div class="bg-gray-900/50 backdrop-blur rounded-xl border border-gray-800 overflow-hidden">
-				<div class="px-6 py-4">
-					<div class="flex items-center justify-between">
-						<div class="flex items-center space-x-3 min-w-0 flex-1">
-							<div class="w-2 h-2 rounded-full ${statusColor} flex-shrink-0"></div>
-							<h3 class="text-lg font-semibold text-white truncate">${item.name}</h3>
-						</div>
+					<div class="px-6 py-4 group-header cursor-pointer group-toggle" data-group-id="${item.id}">
+							<div class="flex items-center justify-between">
+									<div class="flex items-center space-x-3 min-w-0 flex-1">
+											<div class="w-2 h-2 rounded-full ${statusColor} flex-shrink-0"></div>
+											<h3 class="text-lg font-semibold text-white truncate">${item.name}</h3>
+									</div>
 
-						<!-- Desktop metrics -->
-						<div class="hidden sm:flex items-center space-x-6">
-							${
-								item.latency !== undefined && item.latency > 0
-									? `
-								<div class="text-right">
-									<p class="text-sm text-gray-400">Latency</p>
-									<p class="text-sm font-semibold text-white">${Math.round(item.latency)}ms</p>
-								</div>
-							`
-									: ""
-							}
-							${
-								uptimeVal !== undefined
-									? `
-								<div class="text-right">
-									<p class="text-sm text-gray-400">Uptime (${selectedUptimePeriod})</p>
-									<p class="text-sm font-semibold ${uptimeVal > 99 ? "text-emerald-400" : uptimeVal > 95 ? "text-yellow-400" : "text-red-400"}">${uptimeVal.toFixed(
-											UPTIME_PRECISION
-									  )}%</p>
-								</div>
-							`
-									: ""
-							}
-						</div>
+									<!-- Desktop metrics -->
+									<div class="hidden sm:flex items-center space-x-6">
+											${
+												item.latency !== undefined && item.latency > 0
+													? `
+													<div class="text-right">
+															<p class="text-sm text-gray-400">Latency</p>
+															<p class="text-sm font-semibold text-white">${Math.round(item.latency)}ms</p>
+													</div>
+											`
+													: ""
+											}
+											${
+												uptimeVal !== undefined
+													? `
+													<div class="text-right">
+															<p class="text-sm text-gray-400">Uptime (${selectedUptimePeriod})</p>
+															<p class="text-sm font-semibold ${uptimeVal > 99 ? "text-emerald-400" : uptimeVal > 95 ? "text-yellow-400" : "text-red-400"}">${uptimeVal.toFixed(
+															UPTIME_PRECISION
+													  )}%</p>
+													</div>
+											`
+													: ""
+											}
+									</div>
 
-						<!-- Action buttons -->
-						<div class="flex items-center space-x-2 ml-4">
-							<button data-history-id="${item.id}" data-history-type="group" data-history-name="${
+									<!-- Action buttons -->
+									<div class="flex items-center space-x-2 ml-4">
+											<button data-history-id="${item.id}" data-history-type="group" data-history-name="${
 			item.name
 		}" class="cursor-pointer history-btn p-2 hover:bg-gray-800 rounded-lg transition-colors" title="View History">
-								<svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-								</svg>
-							</button>
-							<button data-group-id="${item.id}" class="cursor-pointer group-toggle p-2 hover:bg-gray-800 rounded-lg transition-colors" title="Toggle Group">
-								<svg class="w-5 h-5 text-gray-400 transform transition-transform ${isGroupExpanded ? "rotate-180" : ""}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-								</svg>
-							</button>
-						</div>
+													<svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+															<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+													</svg>
+											</button>
+											<button data-group-id="${item.id}" class="cursor-pointer group-toggle p-2 hover:bg-gray-800 rounded-lg transition-colors" title="Toggle Group">
+													<svg class="toggle-group-icon w-5 h-5 text-gray-400 transform transition-transform ${
+														isGroupExpanded ? "rotate-180" : ""
+													}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+															<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+													</svg>
+											</button>
+									</div>
+							</div>
+
+							<!-- Mobile metrics -->
+							<div class="sm:hidden flex justify-between mt-3">
+									${
+										item.latency !== undefined && item.latency > 0
+											? `
+											<div class="text-left">
+													<p class="text-xs text-gray-400">Latency</p>
+													<p class="text-sm font-semibold text-white">${Math.round(item.latency)}ms</p>
+											</div>
+									`
+											: "<div></div>"
+									}
+									${
+										uptimeVal !== undefined
+											? `
+											<div class="text-right">
+													<p class="text-xs text-gray-400">Uptime (${selectedUptimePeriod})</p>
+													<p class="text-sm font-semibold ${uptimeVal > 99 ? "text-emerald-400" : uptimeVal > 95 ? "text-yellow-400" : "text-red-400"}">${uptimeVal.toFixed(
+													UPTIME_PRECISION
+											  )}%</p>
+											</div>
+									`
+											: ""
+									}
+							</div>
 					</div>
 
-					<!-- Mobile metrics -->
-					<div class="sm:hidden flex justify-between mt-3">
-						${
-							item.latency !== undefined && item.latency > 0
-								? `
-							<div class="text-left">
-								<p class="text-xs text-gray-400">Latency</p>
-								<p class="text-sm font-semibold text-white">${Math.round(item.latency)}ms</p>
+					<!-- Group children -->
+					<div id="group-${item.id}" class="${isGroupExpanded ? "" : "hidden"}">
+							<div class="px-6 py-4 border-t border-gray-800 space-y-4">
+									${item.children?.map((child) => renderServiceItem(child, depth + 1).outerHTML).join("") || ""}
 							</div>
-						`
-								: "<div></div>"
-						}
-						${
-							uptimeVal !== undefined
-								? `
-							<div class="text-right">
-								<p class="text-xs text-gray-400">Uptime (${selectedUptimePeriod})</p>
-								<p class="text-sm font-semibold ${uptimeVal > 99 ? "text-emerald-400" : uptimeVal > 95 ? "text-yellow-400" : "text-red-400"}">${uptimeVal.toFixed(
-										UPTIME_PRECISION
-								  )}%</p>
-							</div>
-						`
-								: ""
-						}
 					</div>
-				</div>
-
-				<!-- Group children -->
-				<div id="group-${item.id}" class="${isGroupExpanded ? "" : "hidden"}">
-					<div class="px-6 py-4 border-t border-gray-800 space-y-4">
-						${item.children?.map((child) => renderServiceItem(child, depth + 1).outerHTML).join("") || ""}
-					</div>
-				</div>
 			</div>
-		`;
+	`;
 	} else if (item.type === "monitor") {
 		// Monitor
 		const uptimeVal = getUptimeValue(item, selectedUptimePeriod);
@@ -425,9 +427,23 @@ function renderServiceItem(item: StatusItem, depth: number): HTMLElement {
 }
 
 function addServiceEventListeners(): void {
+	// Group header click handlers (for expanding/collapsing)
+	document.querySelectorAll(".group-header").forEach((header) => {
+		header.addEventListener("click", (e) => {
+			// Don't toggle if the click was on a button inside the header
+			if ((e.target as HTMLElement).closest("button:not(.group-toggle)")) {
+				return;
+			}
+
+			const groupId = (e.currentTarget as HTMLElement).getAttribute("data-group-id");
+			if (groupId) toggleGroup(groupId);
+		});
+	});
+
 	// Group toggle buttons
-	document.querySelectorAll(".group-toggle").forEach((button) => {
+	document.querySelectorAll("button.group-toggle").forEach((button) => {
 		button.addEventListener("click", (e) => {
+			e.stopPropagation(); // Prevent the header click handler from firing
 			const groupId = (e.currentTarget as HTMLElement).getAttribute("data-group-id");
 			if (groupId) toggleGroup(groupId);
 		});
@@ -460,9 +476,11 @@ function toggleGroup(groupId: string): void {
 	}
 
 	// Update chevron
-	const button = document.querySelector(`[data-group-id="${groupId}"]`);
-	const chevron = button?.querySelector("svg");
-	chevron?.classList.toggle("rotate-180");
+	const chevrons = document.querySelectorAll(`[data-group-id="${groupId}"] svg`);
+	chevrons.forEach((chevron) => {
+		if (!chevron.classList.contains("toggle-group-icon")) return;
+		chevron.classList.toggle("rotate-180");
+	});
 }
 
 // Modal functions
