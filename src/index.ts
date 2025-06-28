@@ -313,12 +313,12 @@ function renderServiceItem(item: StatusItem, depth: number): HTMLElement {
 						<div class="flex items-center space-x-2 ml-4">
 							<button data-history-id="${item.id}" data-history-type="group" data-history-name="${
 			item.name
-		}" class="history-btn p-2 hover:bg-gray-800 rounded-lg transition-colors" title="View History">
+		}" class="cursor-pointer history-btn p-2 hover:bg-gray-800 rounded-lg transition-colors" title="View History">
 								<svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
 								</svg>
 							</button>
-							<button data-group-id="${item.id}" class="group-toggle p-2 hover:bg-gray-800 rounded-lg transition-colors" title="Toggle Group">
+							<button data-group-id="${item.id}" class="cursor-pointer group-toggle p-2 hover:bg-gray-800 rounded-lg transition-colors" title="Toggle Group">
 								<svg class="w-5 h-5 text-gray-400 transform transition-transform ${isGroupExpanded ? "rotate-180" : ""}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
 								</svg>
@@ -391,7 +391,7 @@ function renderServiceItem(item: StatusItem, depth: number): HTMLElement {
 						<div class="ml-4">
 							<button data-history-id="${item.id}" data-history-type="monitor" data-history-name="${
 			item.name
-		}" class="history-btn p-2 hover:bg-gray-800 rounded-lg transition-colors" title="View History">
+		}" class="cursor-pointer history-btn p-2 hover:bg-gray-800 rounded-lg transition-colors" title="View History">
 								<svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
 								</svg>
@@ -502,9 +502,9 @@ async function loadModalHistory(itemId: string, itemType: "group" | "monitor", p
 		document.querySelectorAll(".modal-period-btn").forEach((btn) => {
 			const btnPeriod = btn.getAttribute("data-modal-period");
 			if (btnPeriod === period) {
-				btn.className = "modal-period-btn px-4 py-2 text-sm rounded-lg bg-gray-700 text-gray-300 transition-colors";
+				btn.className = "modal-period-btn cursor-pointer px-4 py-2 text-sm rounded-lg bg-gray-700 text-gray-300 transition-colors";
 			} else {
-				btn.className = "modal-period-btn px-4 py-2 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors";
+				btn.className = "modal-period-btn cursor-pointer px-4 py-2 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors";
 			}
 		});
 
