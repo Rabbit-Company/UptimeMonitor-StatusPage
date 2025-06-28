@@ -587,6 +587,13 @@ async function loadModalHistory(itemId: string, itemType: "group" | "monitor", p
 							},
 							mode: "x",
 						},
+						limits: {
+							x: {
+								min: "original",
+								max: "original",
+								minRange: 10, // Minimum 10 data points visible
+							},
+						},
 					},
 				},
 				scales: {
@@ -690,6 +697,13 @@ async function loadModalHistory(itemId: string, itemType: "group" | "monitor", p
 								enabled: true,
 							},
 							mode: "x",
+						},
+						limits: {
+							x: {
+								min: "original",
+								max: "original",
+								minRange: 10, // Minimum 10 data points visible
+							},
 						},
 					},
 				},
