@@ -779,9 +779,9 @@ function updateModalStats(itemId: string, itemType: string): void {
 			<p class="text-sm text-gray-300">${item.lastCheck ? getDateTime(item.lastCheck) : "-"}</p>
 		</div>
 		<div class="bg-gray-800/50 rounded-lg p-4">
-			<p class="text-xs text-gray-400 mb-1">7 Day Uptime</p>
-			<p class="text-sm font-semibold ${(item.uptime7d || 0) > 99 ? "text-emerald-400" : (item.uptime7d || 0) > 95 ? "text-yellow-400" : "text-red-400"}">
-				${item.uptime7d?.toFixed(UPTIME_PRECISION) || "-"}%
+			<p class="text-xs text-gray-400 mb-1">1 Day Uptime</p>
+			<p class="text-sm font-semibold ${(item.uptime24h || 0) > 99 ? "text-emerald-400" : (item.uptime24h || 0) > 95 ? "text-yellow-400" : "text-red-400"}">
+				${item.uptime24h?.toFixed(UPTIME_PRECISION) || "-"}%
 			</p>
 		</div>
 		<div class="bg-gray-800/50 rounded-lg p-4">
@@ -791,9 +791,9 @@ function updateModalStats(itemId: string, itemType: string): void {
 			</p>
 		</div>
 		<div class="bg-gray-800/50 rounded-lg p-4">
-			<p class="text-xs text-gray-400 mb-1">90 Day Uptime</p>
-			<p class="text-sm font-semibold ${(item.uptime90d || 0) > 99 ? "text-emerald-400" : (item.uptime90d || 0) > 95 ? "text-yellow-400" : "text-red-400"}">
-				${item.uptime90d?.toFixed(UPTIME_PRECISION) || "-"}%
+			<p class="text-xs text-gray-400 mb-1">365 Day Uptime</p>
+			<p class="text-sm font-semibold ${(item.uptime365d || 0) > 99 ? "text-emerald-400" : (item.uptime365d || 0) > 95 ? "text-yellow-400" : "text-red-400"}">
+				${item.uptime365d?.toFixed(UPTIME_PRECISION) || "-"}%
 			</p>
 		</div>
 	`;
