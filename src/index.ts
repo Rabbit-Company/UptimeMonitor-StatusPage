@@ -65,6 +65,10 @@ interface HistoryData {
 	}>;
 }
 
+if (!["1h", "24h", "7d", "30d", "90d", "365d"].includes(globalThis.DEFAULT_PERIOD)) {
+	globalThis.DEFAULT_PERIOD = "24h";
+}
+
 // Global state
 let statusData: StatusData | null = null;
 let selectedUptimePeriod = DEFAULT_PERIOD;
