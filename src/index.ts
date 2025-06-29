@@ -230,7 +230,6 @@ function renderPage(): void {
 			if (item.children) {
 				countServices(item.children);
 			} else {
-				console.log(item.id);
 				if (item.status === "up") servicesUp++;
 				else servicesDown++;
 			}
