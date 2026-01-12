@@ -29,6 +29,18 @@ Chart.register(
 	zoomPlugin
 );
 
+// Types matching the new backend
+interface CustomMetricConfig {
+	id: string;
+	name: string;
+	unit?: string;
+}
+
+interface CustomMetricData {
+	config: CustomMetricConfig;
+	value?: number;
+}
+
 interface StatusData {
 	name: string;
 	slug: string;
@@ -43,6 +55,7 @@ interface StatusItem {
 	status: "up" | "down" | "degraded";
 	latency: number;
 	lastCheck?: string;
+	firstPulse?: string;
 	uptime1h?: number;
 	uptime24h?: number;
 	uptime7d?: number;
@@ -50,21 +63,60 @@ interface StatusItem {
 	uptime90d?: number;
 	uptime365d?: number;
 	children?: StatusItem[];
+	custom1?: CustomMetricData;
+	custom2?: CustomMetricData;
+	custom3?: CustomMetricData;
 }
 
-interface HistoryData {
-	monitorId?: string;
-	groupId?: string;
-	period: string;
-	data: Array<{
-		time: string;
-		avg_latency: number;
-		min_latency: number;
-		max_latency: number;
-		uptime: number;
-	}>;
+// New history data types matching the backend
+interface HistoryDataPoint {
+	timestamp: string;
+	uptime: number;
+	latency_min?: number;
+	latency_max?: number;
+	latency_avg?: number;
+	custom1_min?: number;
+	custom1_max?: number;
+	custom1_avg?: number;
+	custom2_min?: number;
+	custom2_max?: number;
+	custom2_avg?: number;
+	custom3_min?: number;
+	custom3_max?: number;
+	custom3_avg?: number;
 }
 
+interface MonitorHistoryResponse {
+	monitorId: string;
+	type: "raw" | "hourly" | "daily";
+	data: HistoryDataPoint[];
+	customMetrics?: {
+		custom1?: CustomMetricConfig;
+		custom2?: CustomMetricConfig;
+		custom3?: CustomMetricConfig;
+	};
+}
+
+// Group history response
+interface GroupHistoryDataPoint {
+	timestamp: string;
+	uptime: number;
+	latency_min?: number;
+	latency_max?: number;
+	latency_avg?: number;
+}
+
+interface GroupHistoryResponse {
+	groupId: string;
+	type: "raw" | "hourly" | "daily";
+	strategy: "any-up" | "all-up" | "percentage";
+	data: GroupHistoryDataPoint[];
+}
+
+type HistoryType = "raw" | "hourly" | "daily";
+type Period = "1h" | "24h" | "7d" | "30d" | "90d" | "365d";
+
+// Validate and set default period
 if (!["1h", "24h", "7d", "30d", "90d", "365d"].includes(globalThis.DEFAULT_PERIOD)) {
 	globalThis.DEFAULT_PERIOD = "24h";
 }
@@ -73,9 +125,47 @@ if (!["1h", "24h", "7d", "30d", "90d", "365d"].includes(globalThis.DEFAULT_PERIO
 let statusData: StatusData | null = null;
 let selectedUptimePeriod = DEFAULT_PERIOD;
 let expandedGroups = new Set<string>();
-let modalCharts: { uptime?: Chart; latency?: Chart } = {};
-let currentModalItem: string | null = null;
-let currentModalType: "group" | "monitor" | null = null;
+let modalCharts: { uptime?: Chart; latency?: Chart; custom1?: Chart; custom2?: Chart; custom3?: Chart } = {};
+let currentModalItem: StatusItem | null = null;
+let currentModalPeriod: Period = "24h";
+
+// Map periods to history types and filter ranges
+function getHistoryTypeForPeriod(period: Period): HistoryType {
+	switch (period) {
+		case "1h":
+		case "24h":
+			return "raw";
+		case "7d":
+		case "30d":
+		case "90d":
+			return "hourly";
+		case "365d":
+			return "daily";
+		default:
+			return "hourly";
+	}
+}
+
+// Get the time range for filtering data based on period
+function getTimeRangeForPeriod(period: Period): number {
+	const now = Date.now();
+	switch (period) {
+		case "1h":
+			return now - 60 * 60 * 1000;
+		case "24h":
+			return now - 24 * 60 * 60 * 1000;
+		case "7d":
+			return now - 7 * 24 * 60 * 60 * 1000;
+		case "30d":
+			return now - 30 * 24 * 60 * 60 * 1000;
+		case "90d":
+			return now - 90 * 24 * 60 * 60 * 1000;
+		case "365d":
+			return now - 365 * 24 * 60 * 60 * 1000;
+		default:
+			return now - 24 * 60 * 60 * 1000;
+	}
+}
 
 function changeUptimePeriod(period: string): void {
 	selectedUptimePeriod = period;
@@ -129,6 +219,24 @@ function getDateTime(date: Date | string | number, seconds: boolean = true): str
 	const minutes = pad(d.getMinutes());
 	const secs = pad(d.getSeconds());
 	return seconds ? `${year}-${month}-${day} ${hours}:${minutes}:${secs}` : `${year}-${month}-${day} ${hours}:${minutes}`;
+}
+
+// Get appropriate label format based on period
+function formatLabelForPeriod(timestamp: string, period: Period): string {
+	const date = new Date(timestamp);
+	switch (period) {
+		case "1h":
+		case "24h":
+			return getTime(date, false);
+		case "7d":
+			return getDateTime(date, false);
+		case "30d":
+		case "90d":
+		case "365d":
+			return getDate(date);
+		default:
+			return getDateTime(date, false);
+	}
 }
 
 // Initialize
@@ -185,9 +293,9 @@ function setupEventListeners(): void {
 	// Modal period buttons
 	document.querySelectorAll(".modal-period-btn").forEach((btn) => {
 		btn.addEventListener("click", async (e) => {
-			const period = (e.currentTarget as HTMLElement).getAttribute("data-modal-period");
-			if (period && currentModalItem && currentModalType) {
-				await loadModalHistory(currentModalItem, currentModalType, period);
+			const period = (e.currentTarget as HTMLElement).getAttribute("data-modal-period") as Period;
+			if (period && currentModalItem) {
+				await loadModalHistory(currentModalItem, period);
 			}
 		});
 	});
@@ -206,24 +314,30 @@ function renderPage(): void {
 	document.getElementById("serviceName")!.textContent = statusData.name;
 
 	// Calculate overall status
-	const overallUp = !statusData.items.some((item) => item.status === "down");
+	const hasDown = statusData.items.some((item) => item.status === "down");
+	const hasDegraded = statusData.items.some((item) => item.status === "degraded");
 	const overallStatusEl = document.getElementById("overallStatus")!;
 	const statusDot = overallStatusEl.querySelector("div")!;
 	const statusText = overallStatusEl.querySelector("span")!;
 
-	if (overallUp) {
-		statusDot.className = "w-3 h-3 rounded-full bg-emerald-500 animate-pulse-slow";
-		statusText.className = "text-sm font-medium text-emerald-400";
-		statusText.textContent = "All Systems Operational";
-	} else {
+	if (hasDown) {
 		statusDot.className = "w-3 h-3 rounded-full bg-red-500 animate-pulse-slow";
 		statusText.className = "text-sm font-medium text-red-400";
 		statusText.textContent = "Partial Outage";
+	} else if (hasDegraded) {
+		statusDot.className = "w-3 h-3 rounded-full bg-yellow-500 animate-pulse-slow";
+		statusText.className = "text-sm font-medium text-yellow-400";
+		statusText.textContent = "Degraded Performance";
+	} else {
+		statusDot.className = "w-3 h-3 rounded-full bg-emerald-500 animate-pulse-slow";
+		statusText.className = "text-sm font-medium text-emerald-400";
+		statusText.textContent = "All Systems Operational";
 	}
 
 	// Calculate summary stats
 	let servicesUp = 0;
 	let servicesDown = 0;
+	let servicesDegraded = 0;
 
 	function countServices(items: StatusItem[]): void {
 		items.forEach((item) => {
@@ -231,6 +345,7 @@ function renderPage(): void {
 				countServices(item.children);
 			} else {
 				if (item.status === "up") servicesUp++;
+				else if (item.status === "degraded") servicesDegraded++;
 				else servicesDown++;
 			}
 		});
@@ -247,7 +362,7 @@ function renderPage(): void {
 	document.getElementById("uptimeValue")!.textContent = averageUptime;
 	document.getElementById("avgLatency")!.textContent = averageLatency;
 	document.getElementById("servicesUp")!.textContent = servicesUp.toString();
-	document.getElementById("servicesDown")!.textContent = servicesDown.toString();
+	document.getElementById("servicesDown")!.textContent = (servicesDown + servicesDegraded).toString();
 
 	document.getElementById("lastUpdated")!.textContent = getDateTime(statusData.lastUpdated);
 
@@ -312,9 +427,9 @@ function renderServiceItem(item: StatusItem, depth: number): HTMLElement {
 						</div>
 						<!-- Action buttons -->
 						<div class="flex items-center space-x-2 ml-4">
-							<button data-history-id="${item.id}" data-history-type="group" data-history-name="${
-			item.name
-		}" class="cursor-pointer history-btn p-2 hover:bg-gray-800 rounded-lg transition-colors" title="View History">
+							<button data-history-id="${
+								item.id
+							}" data-history-type="group" class="cursor-pointer history-btn p-2 hover:bg-gray-800 rounded-lg transition-colors" title="View History">
 								<svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
 								</svg>
@@ -363,14 +478,67 @@ function renderServiceItem(item: StatusItem, depth: number): HTMLElement {
 			</div>
 		`;
 	} else if (item.type === "monitor") {
-		// Monitor
+		// Monitor - has history button
 		const uptimeVal = getUptimeValue(item, selectedUptimePeriod);
+
+		// Build custom metrics display
+		let customMetricsHtml = "";
+		let customMetricsMobileHtml = "";
+
+		if (item.custom1?.value !== undefined) {
+			const unit = item.custom1.config.unit || "";
+			customMetricsHtml += `
+				<div class="text-right">
+					<p class="text-sm text-gray-400">${item.custom1.config.name}</p>
+					<p class="text-sm font-semibold text-blue-400">${item.custom1.value}${unit}</p>
+				</div>
+			`;
+			customMetricsMobileHtml += `
+				<div class="text-center">
+					<p class="text-xs text-gray-400">${item.custom1.config.name}</p>
+					<p class="text-sm font-semibold text-blue-400">${item.custom1.value}${unit}</p>
+				</div>
+			`;
+		}
+
+		if (item.custom2?.value !== undefined) {
+			const unit = item.custom2.config.unit || "";
+			customMetricsHtml += `
+				<div class="text-right">
+					<p class="text-sm text-gray-400">${item.custom2.config.name}</p>
+					<p class="text-sm font-semibold text-purple-400">${item.custom2.value}${unit}</p>
+				</div>
+			`;
+			customMetricsMobileHtml += `
+				<div class="text-center">
+					<p class="text-xs text-gray-400">${item.custom2.config.name}</p>
+					<p class="text-sm font-semibold text-purple-400">${item.custom2.value}${unit}</p>
+				</div>
+			`;
+		}
+
+		if (item.custom3?.value !== undefined) {
+			const unit = item.custom3.config.unit || "";
+			customMetricsHtml += `
+				<div class="text-right">
+					<p class="text-sm text-gray-400">${item.custom3.config.name}</p>
+					<p class="text-sm font-semibold text-cyan-400">${item.custom3.value}${unit}</p>
+				</div>
+			`;
+			customMetricsMobileHtml += `
+				<div class="text-center">
+					<p class="text-xs text-gray-400">${item.custom3.config.name}</p>
+					<p class="text-sm font-semibold text-cyan-400">${item.custom3.value}${unit}</p>
+				</div>
+			`;
+		}
+
 		div.innerHTML = `
 			<div class="bg-gray-900/50 backdrop-blur rounded-xl border border-gray-800 overflow-hidden">
 				<div class="px-6 py-4">
 					<div class="flex items-center justify-between">
 						<div class="flex items-center space-x-3 min-w-0 flex-1">
-							<div class="w-2 h-2 rounded-full ${item.status === "up" ? "bg-emerald-500" : "bg-red-500"} flex-shrink-0"></div>
+							<div class="w-2 h-2 rounded-full ${item.status === "up" ? "bg-emerald-500" : item.status === "degraded" ? "bg-yellow-500" : "bg-red-500"} flex-shrink-0"></div>
 							<h4 class="font-medium text-white truncate">${item.name}</h4>
 						</div>
 
@@ -380,6 +548,7 @@ function renderServiceItem(item: StatusItem, depth: number): HTMLElement {
 								<p class="text-sm text-gray-400">Latency</p>
 								<p class="text-sm font-semibold text-white">${Math.round(item.latency)}ms</p>
 							</div>
+							${customMetricsHtml}
 							<div class="text-right">
 								<p class="text-sm text-gray-400">Uptime (${selectedUptimePeriod})</p>
 								<p class="text-sm font-semibold ${uptimeVal! > 99 ? "text-emerald-400" : uptimeVal! > 95 ? "text-yellow-400" : "text-red-400"}">${uptimeVal?.toFixed(
@@ -390,9 +559,9 @@ function renderServiceItem(item: StatusItem, depth: number): HTMLElement {
 
 						<!-- History button -->
 						<div class="ml-4">
-							<button data-history-id="${item.id}" data-history-type="monitor" data-history-name="${
-			item.name
-		}" class="cursor-pointer history-btn p-2 hover:bg-gray-800 rounded-lg transition-colors" title="View History">
+							<button data-history-id="${
+								item.id
+							}" data-history-type="monitor" class="cursor-pointer history-btn p-2 hover:bg-gray-800 rounded-lg transition-colors" title="View History">
 								<svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
 								</svg>
@@ -401,11 +570,12 @@ function renderServiceItem(item: StatusItem, depth: number): HTMLElement {
 					</div>
 
 					<!-- Mobile metrics -->
-					<div class="sm:hidden flex justify-between mt-3">
+					<div class="sm:hidden flex flex-wrap justify-between gap-2 mt-3">
 						<div class="text-left">
 							<p class="text-xs text-gray-400">Latency</p>
 							<p class="text-sm font-semibold text-white">${Math.round(item.latency)}ms</p>
 						</div>
+						${customMetricsMobileHtml}
 						<div class="text-right">
 							<p class="text-xs text-gray-400">Uptime (${selectedUptimePeriod})</p>
 							<p class="text-sm font-semibold ${uptimeVal! > 99 ? "text-emerald-400" : uptimeVal! > 95 ? "text-yellow-400" : "text-red-400"}">${uptimeVal?.toFixed(
@@ -444,15 +614,16 @@ function addServiceEventListeners(): void {
 		});
 	});
 
-	// History buttons
+	// History buttons (both monitors and groups)
 	document.querySelectorAll(".history-btn").forEach((button) => {
 		button.addEventListener("click", async (e) => {
 			const btn = e.currentTarget as HTMLElement;
 			const itemId = btn.getAttribute("data-history-id");
-			const itemType = btn.getAttribute("data-history-type") as "group" | "monitor";
-			const itemName = btn.getAttribute("data-history-name");
-			if (itemId && itemType && itemName) {
-				await openHistoryModal(itemId, itemType, itemName);
+			if (itemId) {
+				const item = findItemById(itemId);
+				if (item) {
+					await openHistoryModal(item);
+				}
 			}
 		});
 	});
@@ -479,27 +650,33 @@ function toggleGroup(groupId: string): void {
 }
 
 // Modal functions
-async function openHistoryModal(itemId: string, itemType: "group" | "monitor", itemName: string): Promise<void> {
-	currentModalItem = itemId;
-	currentModalType = itemType;
+async function openHistoryModal(item: StatusItem): Promise<void> {
+	currentModalItem = item;
+	currentModalPeriod = selectedUptimePeriod as Period;
 
 	// Update modal title
-	document.getElementById("modalTitle")!.textContent = itemName;
-	document.getElementById("modalSubtitle")!.textContent = `${itemType === "group" ? "Group" : "Monitor"} History`;
+	document.getElementById("modalTitle")!.textContent = item.name;
+	document.getElementById("modalSubtitle")!.textContent = item.type === "group" ? "Group History" : "Monitor History";
 
 	// Show modal
 	document.getElementById("historyModal")!.classList.remove("hidden");
 	document.body.style.overflow = "hidden";
 
-	// Load default period
-	await loadModalHistory(itemId, itemType, selectedUptimePeriod);
+	// Load history with the currently selected period
+	await loadModalHistory(item, currentModalPeriod);
 }
 
 function closeHistoryModal(): void {
 	document.getElementById("historyModal")!.classList.add("hidden");
 	document.body.style.overflow = "auto";
 
-	// Destroy charts
+	// Destroy all charts
+	destroyAllCharts();
+
+	currentModalItem = null;
+}
+
+function destroyAllCharts(): void {
 	if (modalCharts.uptime) {
 		modalCharts.uptime.destroy();
 		modalCharts.uptime = undefined;
@@ -508,13 +685,24 @@ function closeHistoryModal(): void {
 		modalCharts.latency.destroy();
 		modalCharts.latency = undefined;
 	}
-
-	currentModalItem = null;
-	currentModalType = null;
+	if (modalCharts.custom1) {
+		modalCharts.custom1.destroy();
+		modalCharts.custom1 = undefined;
+	}
+	if (modalCharts.custom2) {
+		modalCharts.custom2.destroy();
+		modalCharts.custom2 = undefined;
+	}
+	if (modalCharts.custom3) {
+		modalCharts.custom3.destroy();
+		modalCharts.custom3 = undefined;
+	}
 }
 
-async function loadModalHistory(itemId: string, itemType: "group" | "monitor", period: string): Promise<void> {
+async function loadModalHistory(item: StatusItem, period: Period): Promise<void> {
 	try {
+		currentModalPeriod = period;
+
 		// Update button states
 		document.querySelectorAll(".modal-period-btn").forEach((btn) => {
 			const btnPeriod = btn.getAttribute("data-modal-period");
@@ -525,123 +713,143 @@ async function loadModalHistory(itemId: string, itemType: "group" | "monitor", p
 			}
 		});
 
-		// Fetch history
-		const endpoint =
-			itemType === "monitor" ? `${BACKEND_URL}/v1/monitors/${itemId}/history?period=${period}` : `${BACKEND_URL}/v1/groups/${itemId}/history?period=${period}`;
+		// Route to appropriate loader based on item type
+		if (item.type === "group") {
+			await loadGroupHistory(item, period);
+		} else {
+			await loadMonitorHistory(item, period);
+		}
+	} catch (error) {
+		console.error(`Error loading ${item.type} history:`, error);
+	}
+}
 
-		const response = await fetch(endpoint);
-		if (!response.ok) throw new Error(`Failed to fetch ${itemType} history`);
+async function loadGroupHistory(item: StatusItem, period: Period): Promise<void> {
+	// Determine which history endpoint to use based on period
+	const historyType = getHistoryTypeForPeriod(period);
 
-		const historyData: HistoryData = await response.json();
+	let endpoint: string;
+	switch (historyType) {
+		case "raw":
+			endpoint = `${BACKEND_URL}/v1/groups/${item.id}/history`;
+			break;
+		case "hourly":
+			endpoint = `${BACKEND_URL}/v1/groups/${item.id}/history/hourly`;
+			break;
+		case "daily":
+			endpoint = `${BACKEND_URL}/v1/groups/${item.id}/history/daily`;
+			break;
+	}
 
-		// Process data
-		const labels = historyData.data.map((d) => {
-			const date = new Date(d.time);
-			if (period === "1h" || period === "24h") {
-				return getTime(date, false);
-			} else if (period === "7d") {
-				return getDateTime(date, false);
-			} else {
-				return getDate(date);
-			}
-		});
+	const response = await fetch(endpoint);
+	if (!response.ok) throw new Error(`Failed to fetch group history`);
 
-		const uptimeData = historyData.data.map((d) => d.uptime);
-		const latencyData = historyData.data.map((d) => d.avg_latency);
-		const minLatencyData = historyData.data.map((d) => d.min_latency);
-		const maxLatencyData = historyData.data.map((d) => d.max_latency);
+	const historyData: GroupHistoryResponse = await response.json();
 
-		// Destroy existing charts
-		if (modalCharts.uptime) modalCharts.uptime.destroy();
-		if (modalCharts.latency) modalCharts.latency.destroy();
+	// Filter data based on the selected period
+	const cutoffTime = getTimeRangeForPeriod(period);
+	const filteredData = historyData.data.filter((d) => new Date(d.timestamp).getTime() >= cutoffTime);
 
-		// Create uptime chart
-		const uptimeCtx = (document.getElementById("modal-uptime-chart") as HTMLCanvasElement).getContext("2d")!;
-		modalCharts.uptime = new Chart(uptimeCtx, {
-			type: "bar",
-			data: {
-				labels: labels,
-				datasets: [
-					{
-						label: "Uptime %",
-						data: uptimeData,
-						backgroundColor: uptimeData.map((v) => (v >= 99 ? "rgba(16, 185, 129, 0.8)" : v >= 95 ? "rgba(251, 191, 36, 0.8)" : "rgba(239, 68, 68, 0.8)")),
-						borderColor: uptimeData.map((v) => (v >= 99 ? "rgba(16, 185, 129, 1)" : v >= 95 ? "rgba(251, 191, 36, 1)" : "rgba(239, 68, 68, 1)")),
-						borderWidth: 1,
-					},
-				],
-			},
-			options: {
-				responsive: true,
-				maintainAspectRatio: false,
-				interaction: {
-					mode: "index",
-					intersect: false,
+	// Process data
+	const labels = filteredData.map((d) => formatLabelForPeriod(d.timestamp, period));
+	const uptimeData = filteredData.map((d) => d.uptime);
+	const latencyMinData = filteredData.map((d) => d.latency_min ?? null);
+	const latencyMaxData = filteredData.map((d) => d.latency_max ?? null);
+	const latencyAvgData = filteredData.map((d) => d.latency_avg ?? null);
+
+	// Destroy existing charts
+	destroyAllCharts();
+
+	// Create uptime chart
+	const uptimeCtx = (document.getElementById("modal-uptime-chart") as HTMLCanvasElement).getContext("2d")!;
+	modalCharts.uptime = new Chart(uptimeCtx, {
+		type: "bar",
+		data: {
+			labels: labels,
+			datasets: [
+				{
+					label: "Uptime %",
+					data: uptimeData,
+					backgroundColor: uptimeData.map((v) => (v >= 99 ? "rgba(16, 185, 129, 0.8)" : v >= 95 ? "rgba(251, 191, 36, 0.8)" : "rgba(239, 68, 68, 0.8)")),
+					borderColor: uptimeData.map((v) => (v >= 99 ? "rgba(16, 185, 129, 1)" : v >= 95 ? "rgba(251, 191, 36, 1)" : "rgba(239, 68, 68, 1)")),
+					borderWidth: 1,
 				},
-				plugins: {
-					legend: {
-						display: false,
-					},
-					tooltip: {
-						callbacks: {
-							label: function (context) {
-								return `Uptime: ${context.parsed.y.toFixed(UPTIME_PRECISION)}%`;
-							},
+			],
+		},
+		options: {
+			responsive: true,
+			maintainAspectRatio: false,
+			interaction: {
+				mode: "index",
+				intersect: false,
+			},
+			plugins: {
+				legend: {
+					display: false,
+				},
+				tooltip: {
+					callbacks: {
+						label: function (context) {
+							return `Uptime: ${context.parsed.y?.toFixed(UPTIME_PRECISION)}%`;
 						},
+					},
+				},
+				zoom: {
+					pan: {
+						enabled: true,
+						mode: "x",
 					},
 					zoom: {
-						pan: {
+						wheel: {
 							enabled: true,
-							mode: "x",
+							speed: 0.1,
 						},
-						zoom: {
-							wheel: {
-								enabled: true,
-								speed: 0.1,
-							},
-							pinch: {
-								enabled: true,
-							},
-							mode: "x",
+						pinch: {
+							enabled: true,
 						},
-						limits: {
-							x: {
-								min: "original",
-								max: "original",
-								minRange: 10, // Minimum 10 data points visible
-							},
-						},
+						mode: "x",
 					},
-				},
-				scales: {
-					y: {
-						beginAtZero: true,
-						max: 100,
-						ticks: {
-							callback: function (value) {
-								return value + "%";
-							},
-							color: "#9CA3AF",
-						},
-						grid: {
-							color: "rgba(156, 163, 175, 0.1)",
-						},
-					},
-					x: {
-						ticks: {
-							color: "#9CA3AF",
-							maxRotation: 45,
-							minRotation: 45,
-						},
-						grid: {
-							display: false,
+					limits: {
+						x: {
+							min: "original",
+							max: "original",
+							minRange: 10,
 						},
 					},
 				},
 			},
-		});
+			scales: {
+				y: {
+					beginAtZero: true,
+					max: 100,
+					ticks: {
+						callback: function (value) {
+							return value + "%";
+						},
+						color: "#9CA3AF",
+					},
+					grid: {
+						color: "rgba(156, 163, 175, 0.1)",
+					},
+				},
+				x: {
+					ticks: {
+						color: "#9CA3AF",
+						maxRotation: 45,
+						minRotation: 45,
+					},
+					grid: {
+						display: false,
+					},
+				},
+			},
+		},
+	});
 
-		// Create latency chart
+	// Create latency chart (simpler for groups - only avg, no min/max)
+	const hasLatencyData = latencyAvgData.some((v) => v !== null);
+
+	if (hasLatencyData) {
 		const latencyCtx = (document.getElementById("modal-latency-chart") as HTMLCanvasElement).getContext("2d")!;
 		modalCharts.latency = new Chart(latencyCtx, {
 			type: "line",
@@ -649,16 +857,8 @@ async function loadModalHistory(itemId: string, itemType: "group" | "monitor", p
 				labels: labels,
 				datasets: [
 					{
-						label: "Avg Latency",
-						data: latencyData,
-						borderColor: "rgba(59, 130, 246, 1)",
-						backgroundColor: "rgba(59, 130, 246, 0.1)",
-						tension: 0.3,
-						fill: true,
-					},
-					{
 						label: "Min Latency",
-						data: minLatencyData,
+						data: latencyMinData,
 						borderColor: "rgba(16, 185, 129, 0.5)",
 						borderDash: [5, 5],
 						tension: 0.3,
@@ -666,8 +866,16 @@ async function loadModalHistory(itemId: string, itemType: "group" | "monitor", p
 						pointRadius: 0,
 					},
 					{
+						label: "Avg Latency",
+						data: latencyAvgData,
+						borderColor: "rgba(59, 130, 246, 1)",
+						backgroundColor: "rgba(59, 130, 246, 0.1)",
+						tension: 0.3,
+						fill: true,
+					},
+					{
 						label: "Max Latency",
-						data: maxLatencyData,
+						data: latencyMaxData,
 						borderColor: "rgba(239, 68, 68, 0.5)",
 						borderDash: [5, 5],
 						tension: 0.3,
@@ -696,7 +904,9 @@ async function loadModalHistory(itemId: string, itemType: "group" | "monitor", p
 						intersect: false,
 						callbacks: {
 							label: function (context) {
-								return `${context.dataset.label}: ${Math.round(context.parsed.y)}ms`;
+								const value = context.parsed.y;
+								if (value === null || value === undefined) return "";
+								return `${context.dataset.label}: ${Math.round(value)}ms`;
 							},
 						},
 					},
@@ -719,7 +929,7 @@ async function loadModalHistory(itemId: string, itemType: "group" | "monitor", p
 							x: {
 								min: "original",
 								max: "original",
-								minRange: 10, // Minimum 10 data points visible
+								minRange: 10,
 							},
 						},
 					},
@@ -750,46 +960,279 @@ async function loadModalHistory(itemId: string, itemType: "group" | "monitor", p
 				},
 			},
 		});
+	}
 
-		const syncCharts = (sourceChart: Chart) => {
-			const { min, max } = sourceChart.scales.x!;
-			if (sourceChart === modalCharts.uptime && modalCharts.latency) {
-				modalCharts.latency.zoomScale("x", { min, max }, "none");
-			} else if (sourceChart === modalCharts.latency && modalCharts.uptime) {
-				modalCharts.uptime.zoomScale("x", { min, max }, "none");
+	// Set up chart sync
+	setupChartSync();
+
+	// Update stats
+	updateModalStats(item);
+}
+
+async function loadMonitorHistory(item: StatusItem, period: Period): Promise<void> {
+	// Determine which history endpoint to use based on period
+	const historyType = getHistoryTypeForPeriod(period);
+
+	let endpoint: string;
+	switch (historyType) {
+		case "raw":
+			endpoint = `${BACKEND_URL}/v1/monitors/${item.id}/history`;
+			break;
+		case "hourly":
+			endpoint = `${BACKEND_URL}/v1/monitors/${item.id}/history/hourly`;
+			break;
+		case "daily":
+			endpoint = `${BACKEND_URL}/v1/monitors/${item.id}/history/daily`;
+			break;
+	}
+
+	const response = await fetch(endpoint);
+	if (!response.ok) throw new Error(`Failed to fetch monitor history`);
+
+	const historyData: MonitorHistoryResponse = await response.json();
+
+	// Filter data based on the selected period
+	const cutoffTime = getTimeRangeForPeriod(period);
+	const filteredData = historyData.data.filter((d) => new Date(d.timestamp).getTime() >= cutoffTime);
+
+	// Process data
+	const labels = filteredData.map((d) => formatLabelForPeriod(d.timestamp, period));
+	const uptimeData = filteredData.map((d) => d.uptime);
+	const latencyAvgData = filteredData.map((d) => d.latency_avg ?? null);
+	const latencyMinData = filteredData.map((d) => d.latency_min ?? null);
+	const latencyMaxData = filteredData.map((d) => d.latency_max ?? null);
+
+	// Destroy existing charts
+	destroyAllCharts();
+
+	// Create uptime chart
+	const uptimeCtx = (document.getElementById("modal-uptime-chart") as HTMLCanvasElement).getContext("2d")!;
+	modalCharts.uptime = new Chart(uptimeCtx, {
+		type: "bar",
+		data: {
+			labels: labels,
+			datasets: [
+				{
+					label: "Uptime %",
+					data: uptimeData,
+					backgroundColor: uptimeData.map((v) => (v >= 99 ? "rgba(16, 185, 129, 0.8)" : v >= 95 ? "rgba(251, 191, 36, 0.8)" : "rgba(239, 68, 68, 0.8)")),
+					borderColor: uptimeData.map((v) => (v >= 99 ? "rgba(16, 185, 129, 1)" : v >= 95 ? "rgba(251, 191, 36, 1)" : "rgba(239, 68, 68, 1)")),
+					borderWidth: 1,
+				},
+			],
+		},
+		options: {
+			responsive: true,
+			maintainAspectRatio: false,
+			interaction: {
+				mode: "index",
+				intersect: false,
+			},
+			plugins: {
+				legend: {
+					display: false,
+				},
+				tooltip: {
+					callbacks: {
+						label: function (context) {
+							return `Uptime: ${context.parsed.y?.toFixed(UPTIME_PRECISION)}%`;
+						},
+					},
+				},
+				zoom: {
+					pan: {
+						enabled: true,
+						mode: "x",
+					},
+					zoom: {
+						wheel: {
+							enabled: true,
+							speed: 0.1,
+						},
+						pinch: {
+							enabled: true,
+						},
+						mode: "x",
+					},
+					limits: {
+						x: {
+							min: "original",
+							max: "original",
+							minRange: 10,
+						},
+					},
+				},
+			},
+			scales: {
+				y: {
+					beginAtZero: true,
+					max: 100,
+					ticks: {
+						callback: function (value) {
+							return value + "%";
+						},
+						color: "#9CA3AF",
+					},
+					grid: {
+						color: "rgba(156, 163, 175, 0.1)",
+					},
+				},
+				x: {
+					ticks: {
+						color: "#9CA3AF",
+						maxRotation: 45,
+						minRotation: 45,
+					},
+					grid: {
+						display: false,
+					},
+				},
+			},
+		},
+	});
+
+	// Create latency chart
+	const latencyCtx = (document.getElementById("modal-latency-chart") as HTMLCanvasElement).getContext("2d")!;
+	modalCharts.latency = new Chart(latencyCtx, {
+		type: "line",
+		data: {
+			labels: labels,
+			datasets: [
+				{
+					label: "Min Latency",
+					data: latencyMinData,
+					borderColor: "rgba(16, 185, 129, 0.5)",
+					borderDash: [5, 5],
+					tension: 0.3,
+					fill: false,
+					pointRadius: 0,
+				},
+				{
+					label: "Avg Latency",
+					data: latencyAvgData,
+					borderColor: "rgba(59, 130, 246, 1)",
+					backgroundColor: "rgba(59, 130, 246, 0.1)",
+					tension: 0.3,
+					fill: true,
+				},
+				{
+					label: "Max Latency",
+					data: latencyMaxData,
+					borderColor: "rgba(239, 68, 68, 0.5)",
+					borderDash: [5, 5],
+					tension: 0.3,
+					fill: false,
+					pointRadius: 0,
+				},
+			],
+		},
+		options: {
+			responsive: true,
+			maintainAspectRatio: false,
+			interaction: {
+				mode: "index",
+				intersect: false,
+			},
+			plugins: {
+				legend: {
+					labels: {
+						color: "#9CA3AF",
+						usePointStyle: true,
+						pointStyle: "line",
+					},
+				},
+				tooltip: {
+					mode: "index",
+					intersect: false,
+					callbacks: {
+						label: function (context) {
+							const value = context.parsed.y;
+							if (value === null || value === undefined) return "";
+							return `${context.dataset.label}: ${Math.round(value)}ms`;
+						},
+					},
+				},
+				zoom: {
+					pan: {
+						enabled: true,
+						mode: "x",
+					},
+					zoom: {
+						wheel: {
+							enabled: true,
+							speed: 0.1,
+						},
+						pinch: {
+							enabled: true,
+						},
+						mode: "x",
+					},
+					limits: {
+						x: {
+							min: "original",
+							max: "original",
+							minRange: 10,
+						},
+					},
+				},
+			},
+			scales: {
+				y: {
+					beginAtZero: true,
+					ticks: {
+						callback: function (value) {
+							return value + "ms";
+						},
+						color: "#9CA3AF",
+					},
+					grid: {
+						color: "rgba(156, 163, 175, 0.1)",
+					},
+				},
+				x: {
+					ticks: {
+						color: "#9CA3AF",
+						maxRotation: 45,
+						minRotation: 45,
+					},
+					grid: {
+						display: false,
+					},
+				},
+			},
+		},
+	});
+
+	// Set up chart sync
+	setupChartSync();
+
+	// Update stats
+	updateModalStats(item);
+}
+
+function setupChartSync(): void {
+	const allCharts = [modalCharts.uptime, modalCharts.latency, modalCharts.custom1, modalCharts.custom2, modalCharts.custom3].filter(Boolean) as Chart[];
+
+	const syncCharts = (sourceChart: Chart) => {
+		const { min, max } = sourceChart.scales.x!;
+		for (const chart of allCharts) {
+			if (chart !== sourceChart) {
+				chart.zoomScale("x", { min, max }, "none");
 			}
+		}
+	};
+
+	for (const chart of allCharts) {
+		chart.options.plugins!.zoom!.zoom!.onZoomComplete = function ({ chart: c }) {
+			syncCharts(c);
 		};
-
-		// Set up event handlers for both charts
-		if (modalCharts.uptime) {
-			modalCharts.uptime.options.plugins!.zoom!.zoom!.onZoomComplete = function ({ chart }) {
-				syncCharts(chart);
-			};
-			modalCharts.uptime.options.plugins!.zoom!.pan!.onPanComplete = function ({ chart }) {
-				syncCharts(chart);
-			};
-		}
-
-		if (modalCharts.latency) {
-			modalCharts.latency.options.plugins!.zoom!.zoom!.onZoomComplete = function ({ chart }) {
-				syncCharts(chart);
-			};
-			modalCharts.latency.options.plugins!.zoom!.pan!.onPanComplete = function ({ chart }) {
-				syncCharts(chart);
-			};
-		}
-
-		// Update stats
-		updateModalStats(itemId, itemType);
-	} catch (error) {
-		console.error(`Error loading ${itemType} history:`, error);
+		chart.options.plugins!.zoom!.pan!.onPanComplete = function ({ chart: c }) {
+			syncCharts(c);
+		};
 	}
 }
 
-function updateModalStats(itemId: string, itemType: string): void {
-	const item = findItemById(itemId);
-	if (!item) return;
-
+function updateModalStats(item: StatusItem): void {
 	const statsHtml = `
 		<div class="bg-gray-800/50 rounded-lg p-4">
 			<p class="text-xs text-gray-400 mb-1">Last Check</p>

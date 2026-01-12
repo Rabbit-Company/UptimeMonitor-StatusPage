@@ -9,14 +9,14 @@
 	},
 	"devDependencies": {
 		"@types/bun": "latest",
-		"@tailwindcss/cli": "^4.1.10",
-		"tailwindcss": "^4.1.10"
+		"@tailwindcss/cli": "^4.1.18",
+		"tailwindcss": "^4.1.18"
 	},
 	"peerDependencies": {
 		"typescript": "^5"
 	},
 	"dependencies": {
-		"chart.js": "^4.5.0",
+		"chart.js": "^4.5.1",
 		"chartjs-plugin-zoom": "^2.2.0"
 	}
 }
