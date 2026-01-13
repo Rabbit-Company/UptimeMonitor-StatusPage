@@ -136,9 +136,9 @@ function getHistoryTypeForPeriod(period: Period): HistoryType {
 		case "24h":
 			return "raw";
 		case "7d":
+			return "hourly";
 		case "30d":
 		case "90d":
-			return "hourly";
 		case "365d":
 			return "daily";
 		default:
@@ -165,6 +165,114 @@ function getTimeRangeForPeriod(period: Period): number {
 		default:
 			return now - 24 * 60 * 60 * 1000;
 	}
+}
+
+function parseTimestamp(timestamp: string): Date {
+	if (/^\d{4}-\d{2}-\d{2}$/.test(timestamp)) {
+		const [year, month, day] = timestamp.split("-").map(Number) as [number, number, number];
+		return new Date(year, month - 1, day);
+	}
+
+	return new Date(timestamp);
+}
+
+function formatDateOnly(date: Date): string {
+	const year = date.getFullYear();
+	const month = String(date.getMonth() + 1).padStart(2, "0");
+	const day = String(date.getDate()).padStart(2, "0");
+	return `${year}-${month}-${day}`;
+}
+
+// Fill missing intervals in history data with 0 uptime and null latencies
+// This handles cases where monitoring hasn't been running for the full period
+function fillMissingIntervals<T extends { timestamp: string; uptime: number }>(data: T[], period: Period, historyType: HistoryType): T[] {
+	if (historyType === "raw") {
+		return data;
+	}
+
+	const now = new Date();
+	const cutoffTime = getTimeRangeForPeriod(period);
+
+	const intervalMs = historyType === "hourly" ? 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
+
+	const dataMap = new Map<string, T>();
+	for (const point of data) {
+		const date = parseTimestamp(point.timestamp);
+		let key: string;
+		if (historyType === "hourly") {
+			key = `${formatDateOnly(date)}-${String(date.getHours()).padStart(2, "0")}`;
+		} else {
+			key = formatDateOnly(date);
+		}
+		dataMap.set(key, point);
+	}
+
+	const filledData: T[] = [];
+
+	const startDate = new Date(cutoffTime);
+	if (historyType === "hourly") {
+		startDate.setMinutes(0, 0, 0);
+	} else {
+		startDate.setHours(0, 0, 0, 0);
+	}
+
+	let endDate: Date;
+	if (historyType === "hourly") {
+		endDate = new Date(now);
+		endDate.setMinutes(0, 0, 0);
+		endDate.setHours(endDate.getHours() - 1);
+	} else {
+		endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+	}
+
+	let currentTime = startDate.getTime();
+	const endTime = endDate.getTime();
+
+	while (currentTime <= endTime) {
+		const currentDate = new Date(currentTime);
+		let key: string;
+		if (historyType === "hourly") {
+			key = `${formatDateOnly(currentDate)}-${String(currentDate.getHours()).padStart(2, "0")}`;
+		} else {
+			key = formatDateOnly(currentDate);
+		}
+
+		const existingPoint = dataMap.get(key);
+
+		if (existingPoint) {
+			filledData.push(existingPoint);
+		} else {
+			const placeholderTimestamp = historyType === "daily" ? formatDateOnly(currentDate) : currentDate.toISOString();
+			const placeholderPoint = {
+				timestamp: placeholderTimestamp,
+				uptime: 0,
+			} as T;
+			filledData.push(placeholderPoint);
+		}
+
+		currentTime += intervalMs;
+	}
+
+	const currentIntervalDate = new Date(now);
+	if (historyType === "hourly") {
+		currentIntervalDate.setMinutes(0, 0, 0);
+	} else {
+		currentIntervalDate.setHours(0, 0, 0, 0);
+	}
+
+	let currentKey: string;
+	if (historyType === "hourly") {
+		currentKey = `${formatDateOnly(currentIntervalDate)}-${String(currentIntervalDate.getHours()).padStart(2, "0")}`;
+	} else {
+		currentKey = formatDateOnly(currentIntervalDate);
+	}
+
+	const currentIntervalPoint = dataMap.get(currentKey);
+	if (currentIntervalPoint) {
+		filledData.push(currentIntervalPoint);
+	}
+
+	return filledData;
 }
 
 function changeUptimePeriod(period: string): void {
@@ -223,7 +331,7 @@ function getDateTime(date: Date | string | number, seconds: boolean = true): str
 
 // Get appropriate label format based on period
 function formatLabelForPeriod(timestamp: string, period: Period): string {
-	const date = new Date(timestamp);
+	const date = parseTimestamp(timestamp);
 	switch (period) {
 		case "1h":
 		case "24h":
@@ -748,14 +856,17 @@ async function loadGroupHistory(item: StatusItem, period: Period): Promise<void>
 
 	// Filter data based on the selected period
 	const cutoffTime = getTimeRangeForPeriod(period);
-	const filteredData = historyData.data.filter((d) => new Date(d.timestamp).getTime() >= cutoffTime);
+	const filteredData = historyData.data.filter((d) => parseTimestamp(d.timestamp).getTime() >= cutoffTime);
+
+	// Fill missing intervals with 0 uptime for hourly/daily data
+	const filledData = fillMissingIntervals(filteredData, period, historyType);
 
 	// Process data
-	const labels = filteredData.map((d) => formatLabelForPeriod(d.timestamp, period));
-	const uptimeData = filteredData.map((d) => d.uptime);
-	const latencyMinData = filteredData.map((d) => d.latency_min ?? null);
-	const latencyMaxData = filteredData.map((d) => d.latency_max ?? null);
-	const latencyAvgData = filteredData.map((d) => d.latency_avg ?? null);
+	const labels = filledData.map((d) => formatLabelForPeriod(d.timestamp, period));
+	const uptimeData = filledData.map((d) => d.uptime);
+	const latencyMinData = filledData.map((d) => d.latency_min ?? null);
+	const latencyMaxData = filledData.map((d) => d.latency_max ?? null);
+	const latencyAvgData = filledData.map((d) => d.latency_avg ?? null);
 
 	// Destroy existing charts
 	destroyAllCharts();
@@ -993,14 +1104,17 @@ async function loadMonitorHistory(item: StatusItem, period: Period): Promise<voi
 
 	// Filter data based on the selected period
 	const cutoffTime = getTimeRangeForPeriod(period);
-	const filteredData = historyData.data.filter((d) => new Date(d.timestamp).getTime() >= cutoffTime);
+	const filteredData = historyData.data.filter((d) => parseTimestamp(d.timestamp).getTime() >= cutoffTime);
+
+	// Fill missing intervals with 0 uptime for hourly/daily data
+	const filledData = fillMissingIntervals(filteredData, period, historyType);
 
 	// Process data
-	const labels = filteredData.map((d) => formatLabelForPeriod(d.timestamp, period));
-	const uptimeData = filteredData.map((d) => d.uptime);
-	const latencyAvgData = filteredData.map((d) => d.latency_avg ?? null);
-	const latencyMinData = filteredData.map((d) => d.latency_min ?? null);
-	const latencyMaxData = filteredData.map((d) => d.latency_max ?? null);
+	const labels = filledData.map((d) => formatLabelForPeriod(d.timestamp, period));
+	const uptimeData = filledData.map((d) => d.uptime);
+	const latencyAvgData = filledData.map((d) => d.latency_avg ?? null);
+	const latencyMinData = filledData.map((d) => d.latency_min ?? null);
+	const latencyMaxData = filledData.map((d) => d.latency_max ?? null);
 
 	// Destroy existing charts
 	destroyAllCharts();
