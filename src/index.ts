@@ -598,13 +598,13 @@ function renderServiceItem(item: StatusItem, depth: number): HTMLElement {
 			customMetricsHtml += `
 				<div class="text-right">
 					<p class="text-sm text-gray-400">${item.custom1.config.name}</p>
-					<p class="text-sm font-semibold text-blue-400">${item.custom1.value}${unit}</p>
+					<p class="text-sm font-semibold text-blue-400">${item.custom1.value} ${unit}</p>
 				</div>
 			`;
 			customMetricsMobileHtml += `
 				<div class="text-center">
 					<p class="text-xs text-gray-400">${item.custom1.config.name}</p>
-					<p class="text-sm font-semibold text-blue-400">${item.custom1.value}${unit}</p>
+					<p class="text-sm font-semibold text-blue-400">${item.custom1.value} ${unit}</p>
 				</div>
 			`;
 		}
@@ -614,13 +614,13 @@ function renderServiceItem(item: StatusItem, depth: number): HTMLElement {
 			customMetricsHtml += `
 				<div class="text-right">
 					<p class="text-sm text-gray-400">${item.custom2.config.name}</p>
-					<p class="text-sm font-semibold text-purple-400">${item.custom2.value}${unit}</p>
+					<p class="text-sm font-semibold text-purple-400">${item.custom2.value} ${unit}</p>
 				</div>
 			`;
 			customMetricsMobileHtml += `
 				<div class="text-center">
 					<p class="text-xs text-gray-400">${item.custom2.config.name}</p>
-					<p class="text-sm font-semibold text-purple-400">${item.custom2.value}${unit}</p>
+					<p class="text-sm font-semibold text-purple-400">${item.custom2.value} ${unit}</p>
 				</div>
 			`;
 		}
@@ -630,13 +630,13 @@ function renderServiceItem(item: StatusItem, depth: number): HTMLElement {
 			customMetricsHtml += `
 				<div class="text-right">
 					<p class="text-sm text-gray-400">${item.custom3.config.name}</p>
-					<p class="text-sm font-semibold text-cyan-400">${item.custom3.value}${unit}</p>
+					<p class="text-sm font-semibold text-cyan-400">${item.custom3.value} ${unit}</p>
 				</div>
 			`;
 			customMetricsMobileHtml += `
 				<div class="text-center">
 					<p class="text-xs text-gray-400">${item.custom3.config.name}</p>
-					<p class="text-sm font-semibold text-cyan-400">${item.custom3.value}${unit}</p>
+					<p class="text-sm font-semibold text-cyan-400">${item.custom3.value} ${unit}</p>
 				</div>
 			`;
 		}
@@ -1073,11 +1073,137 @@ async function loadGroupHistory(item: StatusItem, period: Period): Promise<void>
 		});
 	}
 
+	// Hide custom metric containers for groups (they don't have custom metrics)
+	document.getElementById("custom1-chart-container")!.classList.add("hidden");
+	document.getElementById("custom2-chart-container")!.classList.add("hidden");
+	document.getElementById("custom3-chart-container")!.classList.add("hidden");
 	// Set up chart sync
 	setupChartSync();
 
 	// Update stats
 	updateModalStats(item);
+}
+
+// Helper function to create a custom metric chart
+function createCustomMetricChart(
+	ctx: CanvasRenderingContext2D,
+	labels: string[],
+	minData: (number | null)[],
+	avgData: (number | null)[],
+	maxData: (number | null)[],
+	config: CustomMetricConfig
+): Chart {
+	const unit = config.unit || "";
+
+	return new Chart(ctx, {
+		type: "line",
+		data: {
+			labels: labels,
+			datasets: [
+				{
+					label: `Min ${config.name}`,
+					data: minData,
+					borderColor: "rgba(16, 185, 129, 0.5)",
+					borderDash: [5, 5],
+					tension: 0.3,
+					fill: false,
+					pointRadius: 0,
+				},
+				{
+					label: `Avg ${config.name}`,
+					data: avgData,
+					borderColor: "rgba(168, 85, 247, 1)",
+					backgroundColor: "rgba(168, 85, 247, 0.1)",
+					tension: 0.3,
+					fill: true,
+				},
+				{
+					label: `Max ${config.name}`,
+					data: maxData,
+					borderColor: "rgba(239, 68, 68, 0.5)",
+					borderDash: [5, 5],
+					tension: 0.3,
+					fill: false,
+					pointRadius: 0,
+				},
+			],
+		},
+		options: {
+			responsive: true,
+			maintainAspectRatio: false,
+			interaction: {
+				mode: "index",
+				intersect: false,
+			},
+			plugins: {
+				legend: {
+					labels: {
+						color: "#9CA3AF",
+						usePointStyle: true,
+						pointStyle: "line",
+					},
+				},
+				tooltip: {
+					mode: "index",
+					intersect: false,
+					callbacks: {
+						label: function (context) {
+							const value = context.parsed.y;
+							if (value === null || value === undefined) return "";
+							return `${context.dataset.label}: ${Math.round(value)} ${unit}`;
+						},
+					},
+				},
+				zoom: {
+					pan: {
+						enabled: true,
+						mode: "x",
+					},
+					zoom: {
+						wheel: {
+							enabled: true,
+							speed: 0.1,
+						},
+						pinch: {
+							enabled: true,
+						},
+						mode: "x",
+					},
+					limits: {
+						x: {
+							min: "original",
+							max: "original",
+							minRange: 10,
+						},
+					},
+				},
+			},
+			scales: {
+				y: {
+					beginAtZero: true,
+					ticks: {
+						callback: function (value) {
+							return `${value} ${unit}`;
+						},
+						color: "#9CA3AF",
+					},
+					grid: {
+						color: "rgba(156, 163, 175, 0.1)",
+					},
+				},
+				x: {
+					ticks: {
+						color: "#9CA3AF",
+						maxRotation: 45,
+						minRotation: 45,
+					},
+					grid: {
+						display: false,
+					},
+				},
+			},
+		},
+	});
 }
 
 async function loadMonitorHistory(item: StatusItem, period: Period): Promise<void> {
@@ -1316,6 +1442,60 @@ async function loadMonitorHistory(item: StatusItem, period: Period): Promise<voi
 			},
 		},
 	});
+
+	// Create custom metrics charts if data is available
+	const customMetrics = historyData.customMetrics;
+
+	// Custom Metric 1
+	const custom1Container = document.getElementById("custom1-chart-container")!;
+	if (customMetrics?.custom1 && filledData.some((d) => d.custom1_avg !== undefined)) {
+		const custom1Config = customMetrics.custom1;
+		const custom1MinData = filledData.map((d) => d.custom1_min ?? null);
+		const custom1MaxData = filledData.map((d) => d.custom1_max ?? null);
+		const custom1AvgData = filledData.map((d) => d.custom1_avg ?? null);
+
+		document.getElementById("custom1-chart-title")!.textContent = `${custom1Config.name} History`;
+		custom1Container.classList.remove("hidden");
+
+		const custom1Ctx = (document.getElementById("modal-custom1-chart") as HTMLCanvasElement).getContext("2d")!;
+		modalCharts.custom1 = createCustomMetricChart(custom1Ctx, labels, custom1MinData, custom1AvgData, custom1MaxData, custom1Config);
+	} else {
+		custom1Container.classList.add("hidden");
+	}
+
+	// Custom Metric 2
+	const custom2Container = document.getElementById("custom2-chart-container")!;
+	if (customMetrics?.custom2 && filledData.some((d) => d.custom2_avg !== undefined)) {
+		const custom2Config = customMetrics.custom2;
+		const custom2MinData = filledData.map((d) => d.custom2_min ?? null);
+		const custom2MaxData = filledData.map((d) => d.custom2_max ?? null);
+		const custom2AvgData = filledData.map((d) => d.custom2_avg ?? null);
+
+		document.getElementById("custom2-chart-title")!.textContent = `${custom2Config.name} History`;
+		custom2Container.classList.remove("hidden");
+
+		const custom2Ctx = (document.getElementById("modal-custom2-chart") as HTMLCanvasElement).getContext("2d")!;
+		modalCharts.custom2 = createCustomMetricChart(custom2Ctx, labels, custom2MinData, custom2AvgData, custom2MaxData, custom2Config);
+	} else {
+		custom2Container.classList.add("hidden");
+	}
+
+	// Custom Metric 3
+	const custom3Container = document.getElementById("custom3-chart-container")!;
+	if (customMetrics?.custom3 && filledData.some((d) => d.custom3_avg !== undefined)) {
+		const custom3Config = customMetrics.custom3;
+		const custom3MinData = filledData.map((d) => d.custom3_min ?? null);
+		const custom3MaxData = filledData.map((d) => d.custom3_max ?? null);
+		const custom3AvgData = filledData.map((d) => d.custom3_avg ?? null);
+
+		document.getElementById("custom3-chart-title")!.textContent = `${custom3Config.name} History`;
+		custom3Container.classList.remove("hidden");
+
+		const custom3Ctx = (document.getElementById("modal-custom3-chart") as HTMLCanvasElement).getContext("2d")!;
+		modalCharts.custom3 = createCustomMetricChart(custom3Ctx, labels, custom3MinData, custom3AvgData, custom3MaxData, custom3Config);
+	} else {
+		custom3Container.classList.add("hidden");
+	}
 
 	// Set up chart sync
 	setupChartSync();
