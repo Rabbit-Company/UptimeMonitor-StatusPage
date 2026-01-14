@@ -275,6 +275,90 @@ function fillMissingIntervals<T extends { timestamp: string; uptime: number }>(d
 	return filledData;
 }
 
+// Aggregate raw 1-minute data into 10-minute intervals for 24h period
+// This reduces ~1440 data points to ~144 for better chart performance
+function aggregateTo10MinIntervals<T extends HistoryDataPoint | GroupHistoryDataPoint>(data: T[]): T[] {
+	if (data.length === 0) return data;
+
+	// Group data points by 10-minute buckets
+	const buckets = new Map<string, T[]>();
+
+	for (const point of data) {
+		const date = parseTimestamp(point.timestamp);
+		// Round down to nearest 10-minute interval
+		const minutes = Math.floor(date.getMinutes() / 10) * 10;
+		date.setMinutes(minutes, 0, 0);
+		const bucketKey = date.toISOString();
+
+		if (!buckets.has(bucketKey)) {
+			buckets.set(bucketKey, []);
+		}
+		buckets.get(bucketKey)!.push(point);
+	}
+
+	const aggregated: T[] = [];
+
+	for (const [bucketKey, points] of buckets) {
+		if (points.length === 0) continue;
+
+		const uptimeSum = points.reduce((sum, p) => sum + p.uptime, 0);
+		const uptimeAvg = uptimeSum / points.length;
+
+		const aggregatedPoint: any = {
+			timestamp: bucketKey,
+			uptime: uptimeAvg,
+		};
+
+		const latencyMinValues = points.map((p) => p.latency_min).filter((v): v is number => v !== undefined && v !== null);
+		const latencyMaxValues = points.map((p) => p.latency_max).filter((v): v is number => v !== undefined && v !== null);
+		const latencyAvgValues = points.map((p) => p.latency_avg).filter((v): v is number => v !== undefined && v !== null);
+
+		if (latencyMinValues.length > 0) {
+			aggregatedPoint.latency_min = Math.min(...latencyMinValues);
+		}
+		if (latencyMaxValues.length > 0) {
+			aggregatedPoint.latency_max = Math.max(...latencyMaxValues);
+		}
+		if (latencyAvgValues.length > 0) {
+			aggregatedPoint.latency_avg = latencyAvgValues.reduce((sum, v) => sum + v, 0) / latencyAvgValues.length;
+		}
+
+		// Aggregate custom metrics if present (only for HistoryDataPoint, not GroupHistoryDataPoint)
+		const firstPoint = points[0] as any;
+		if ("custom1_avg" in firstPoint) {
+			const custom1MinValues = points.map((p: any) => p.custom1_min).filter((v: any): v is number => v !== undefined && v !== null);
+			const custom1MaxValues = points.map((p: any) => p.custom1_max).filter((v: any): v is number => v !== undefined && v !== null);
+			const custom1AvgValues = points.map((p: any) => p.custom1_avg).filter((v: any): v is number => v !== undefined && v !== null);
+
+			if (custom1MinValues.length > 0) aggregatedPoint.custom1_min = Math.min(...custom1MinValues);
+			if (custom1MaxValues.length > 0) aggregatedPoint.custom1_max = Math.max(...custom1MaxValues);
+			if (custom1AvgValues.length > 0) aggregatedPoint.custom1_avg = custom1AvgValues.reduce((sum: number, v: number) => sum + v, 0) / custom1AvgValues.length;
+
+			const custom2MinValues = points.map((p: any) => p.custom2_min).filter((v: any): v is number => v !== undefined && v !== null);
+			const custom2MaxValues = points.map((p: any) => p.custom2_max).filter((v: any): v is number => v !== undefined && v !== null);
+			const custom2AvgValues = points.map((p: any) => p.custom2_avg).filter((v: any): v is number => v !== undefined && v !== null);
+
+			if (custom2MinValues.length > 0) aggregatedPoint.custom2_min = Math.min(...custom2MinValues);
+			if (custom2MaxValues.length > 0) aggregatedPoint.custom2_max = Math.max(...custom2MaxValues);
+			if (custom2AvgValues.length > 0) aggregatedPoint.custom2_avg = custom2AvgValues.reduce((sum: number, v: number) => sum + v, 0) / custom2AvgValues.length;
+
+			const custom3MinValues = points.map((p: any) => p.custom3_min).filter((v: any): v is number => v !== undefined && v !== null);
+			const custom3MaxValues = points.map((p: any) => p.custom3_max).filter((v: any): v is number => v !== undefined && v !== null);
+			const custom3AvgValues = points.map((p: any) => p.custom3_avg).filter((v: any): v is number => v !== undefined && v !== null);
+
+			if (custom3MinValues.length > 0) aggregatedPoint.custom3_min = Math.min(...custom3MinValues);
+			if (custom3MaxValues.length > 0) aggregatedPoint.custom3_max = Math.max(...custom3MaxValues);
+			if (custom3AvgValues.length > 0) aggregatedPoint.custom3_avg = custom3AvgValues.reduce((sum: number, v: number) => sum + v, 0) / custom3AvgValues.length;
+		}
+
+		aggregated.push(aggregatedPoint as T);
+	}
+
+	aggregated.sort((a, b) => parseTimestamp(a.timestamp).getTime() - parseTimestamp(b.timestamp).getTime());
+
+	return aggregated;
+}
+
 function changeUptimePeriod(period: string): void {
 	selectedUptimePeriod = period;
 	renderPage();
@@ -856,7 +940,12 @@ async function loadGroupHistory(item: StatusItem, period: Period): Promise<void>
 
 	// Filter data based on the selected period
 	const cutoffTime = getTimeRangeForPeriod(period);
-	const filteredData = historyData.data.filter((d) => parseTimestamp(d.timestamp).getTime() >= cutoffTime);
+	let filteredData = historyData.data.filter((d) => parseTimestamp(d.timestamp).getTime() >= cutoffTime);
+
+	// For 24h period with raw data, aggregate to 10-minute intervals for better chart performance
+	if (period === "24h" && historyType === "raw") {
+		filteredData = aggregateTo10MinIntervals(filteredData);
+	}
 
 	// Fill missing intervals with 0 uptime for hourly/daily data
 	const filledData = fillMissingIntervals(filteredData, period, historyType);
@@ -982,7 +1071,8 @@ async function loadGroupHistory(item: StatusItem, period: Period): Promise<void>
 						borderColor: "rgba(59, 130, 246, 1)",
 						backgroundColor: "rgba(59, 130, 246, 0.1)",
 						tension: 0.3,
-						fill: true,
+						fill: false,
+						pointRadius: 0,
 					},
 					{
 						label: "Max Latency",
@@ -1115,7 +1205,8 @@ function createCustomMetricChart(
 					borderColor: "rgba(168, 85, 247, 1)",
 					backgroundColor: "rgba(168, 85, 247, 0.1)",
 					tension: 0.3,
-					fill: true,
+					fill: false,
+					pointRadius: 0,
 				},
 				{
 					label: `Max ${config.name}`,
@@ -1230,7 +1321,12 @@ async function loadMonitorHistory(item: StatusItem, period: Period): Promise<voi
 
 	// Filter data based on the selected period
 	const cutoffTime = getTimeRangeForPeriod(period);
-	const filteredData = historyData.data.filter((d) => parseTimestamp(d.timestamp).getTime() >= cutoffTime);
+	let filteredData = historyData.data.filter((d) => parseTimestamp(d.timestamp).getTime() >= cutoffTime);
+
+	// For 24h period with raw data, aggregate to 10-minute intervals for better chart performance
+	if (period === "24h" && historyType === "raw") {
+		filteredData = aggregateTo10MinIntervals(filteredData);
+	}
 
 	// Fill missing intervals with 0 uptime for hourly/daily data
 	const filledData = fillMissingIntervals(filteredData, period, historyType);
@@ -1353,7 +1449,8 @@ async function loadMonitorHistory(item: StatusItem, period: Period): Promise<voi
 					borderColor: "rgba(59, 130, 246, 1)",
 					backgroundColor: "rgba(59, 130, 246, 0.1)",
 					tension: 0.3,
-					fill: true,
+					fill: false,
+					pointRadius: 0,
 				},
 				{
 					label: "Max Latency",
