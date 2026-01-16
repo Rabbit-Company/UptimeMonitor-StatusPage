@@ -63,3 +63,40 @@ html {
 .body-scroll {
 	overflow: auto;
 }
+
+/*
+	Notifications
+*/
+
+.notification {
+	max-width: 320px;
+	backdrop-filter: blur(8px);
+}
+
+@keyframes notification-slide-in {
+	from {
+		transform: translateX(100%);
+		opacity: 0;
+	}
+	to {
+		transform: translateX(0);
+		opacity: 1;
+	}
+}
+
+/*
+	Live Update Highlight
+*/
+
+@keyframes highlight-pulse {
+	0% {
+		background-color: rgba(16, 185, 129, 0.2);
+	}
+	100% {
+		background-color: transparent;
+	}
+}
+
+.highlight-update {
+	animation: highlight-pulse 1s ease-out;
+}

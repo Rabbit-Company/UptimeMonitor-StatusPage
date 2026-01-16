@@ -6,7 +6,7 @@
 		<title>Status Page</title>
 		<meta
 			http-equiv="Content-Security-Policy"
-			content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self' https:; base-uri 'self'; form-action 'self';"
+			content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self' http: https: ws: wss:; base-uri 'self'; form-action 'self';"
 		/>
 		<link rel="stylesheet" href="index.css" />
 	</head>
@@ -32,10 +32,17 @@
 								<p class="text-gray-400 mt-1 hidden sm:block">Service Status Monitor</p>
 							</div>
 
-							<!-- Overall status - always visible, centered when title is hidden -->
-							<div id="overallStatus" class="flex items-center space-x-2">
-								<div class="w-3 h-3 rounded-full bg-emerald-500"></div>
-								<span class="text-sm font-medium text-white"></span>
+							<!-- Overall status and WebSocket indicator -->
+							<div class="flex items-center space-x-4">
+								<div id="overallStatus" class="flex items-center space-x-1.5 px-2 py-1 rounded-md bg-gray-800/50">
+									<div id="overallStatusIndicator" class="w-2 h-2 rounded-full bg-gray-500"></div>
+									<span id="overallStatusText" class="text-xs text-gray-400">Connecting...</span>
+								</div>
+								<!-- WebSocket connection status -->
+								<div class="flex items-center space-x-1.5 px-2 py-1 rounded-md bg-gray-800/50">
+									<div id="wsStatusIndicator" class="w-2 h-2 rounded-full bg-gray-500"></div>
+									<span id="wsStatusText" class="text-xs text-gray-400">Connecting...</span>
+								</div>
 							</div>
 						</div>
 					</div>
@@ -217,6 +224,9 @@
 				</div>
 			</div>
 		</div>
+
+		<!-- Notification Container -->
+		<div id="notificationContainer" class="fixed top-20 right-4 z-50 space-y-2"></div>
 
 		<script type="module" src="config.js"></script>
 		<script type="module" src="index.js"></script>
