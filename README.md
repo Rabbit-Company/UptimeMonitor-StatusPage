@@ -183,7 +183,7 @@ services:
       - BACKEND_URL=https://pulse.rabbit-company.com
       - STATUS_PAGE_SLUG=passky
       - UPTIME_PRECISION=3
-			- LATENCY_PRECISION=0
+      - LATENCY_PRECISION=0
       - DEFAULT_PERIOD=24h
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/health"]
