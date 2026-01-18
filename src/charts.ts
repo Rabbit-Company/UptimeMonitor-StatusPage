@@ -39,7 +39,7 @@ Chart.register(
 	Tooltip,
 	Legend,
 	Filler,
-	zoomPlugin
+	zoomPlugin,
 );
 
 /**
@@ -149,7 +149,7 @@ function createLatencyChart(
 	labels: string[],
 	latencyMinData: (number | null)[],
 	latencyAvgData: (number | null)[],
-	latencyMaxData: (number | null)[]
+	latencyMaxData: (number | null)[],
 ): Chart {
 	return new Chart(ctx, {
 		type: "line",
@@ -207,7 +207,7 @@ function createLatencyChart(
 						label: function (context) {
 							const value = context.parsed.y;
 							if (value === null || value === undefined) return "";
-							return `${context.dataset.label}: ${Math.round(value)}ms`;
+							return `${context.dataset.label}: ${value.toFixed(LATENCY_PRECISION)}ms`;
 						},
 					},
 				},
@@ -241,7 +241,7 @@ export function createCustomMetricChart(
 	minData: (number | null)[],
 	avgData: (number | null)[],
 	maxData: (number | null)[],
-	config: CustomMetricConfig
+	config: CustomMetricConfig,
 ): Chart {
 	const unit = config.unit || "";
 
@@ -490,7 +490,7 @@ export async function loadMonitorHistory(item: StatusItem, period: Period): Prom
 function createCustomMetricChartIfAvailable(
 	metricKey: "custom1" | "custom2" | "custom3",
 	config: CustomMetricConfig | undefined,
-	filledData: HistoryDataPoint[]
+	filledData: HistoryDataPoint[],
 ): void {
 	const container = document.getElementById(`${metricKey}-chart-container`)!;
 	const labels = filledData.map((d) => formatLabelForPeriod(d.timestamp, appState.currentModalPeriod));

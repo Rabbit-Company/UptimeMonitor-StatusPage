@@ -55,7 +55,8 @@ export function updateSummaryStats(): void {
 	countServices(appState.statusData.items);
 
 	const latencyValues: number[] = appState.statusData.items.map((i) => i.latency).filter((l) => l !== undefined && l > 0);
-	const averageLatency = latencyValues.length > 0 ? `${Math.round(latencyValues.reduce((sum, val) => sum + val, 0) / latencyValues.length)}ms` : "-";
+	const averageLatency =
+		latencyValues.length > 0 ? (latencyValues.reduce((sum, val) => sum + val, 0) / latencyValues.length).toFixed(LATENCY_PRECISION) + "ms" : "-";
 
 	const avgLatencyEl = document.getElementById("avgLatency")!;
 	avgLatencyEl.textContent = averageLatency;
@@ -82,7 +83,7 @@ export function updateMonitorUI(monitorId: string, monitor: StatusItem): void {
 	// Update latency (desktop) using data attribute
 	const desktopLatency = document.querySelector(`[data-latency-desktop="${monitorId}"]`);
 	if (desktopLatency) {
-		desktopLatency.textContent = `${Math.round(monitor.latency)}ms`;
+		desktopLatency.textContent = `${monitor.latency.toFixed(LATENCY_PRECISION)}ms`;
 		desktopLatency.classList.add("animate-pulse");
 		setTimeout(() => desktopLatency.classList.remove("animate-pulse"), 1000);
 	}
@@ -90,7 +91,7 @@ export function updateMonitorUI(monitorId: string, monitor: StatusItem): void {
 	// Update latency (mobile) using data attribute
 	const mobileLatency = document.querySelector(`[data-latency-mobile="${monitorId}"]`);
 	if (mobileLatency) {
-		mobileLatency.textContent = `${Math.round(monitor.latency)}ms`;
+		mobileLatency.textContent = `${monitor.latency.toFixed(LATENCY_PRECISION)}ms`;
 	}
 
 	// Update custom metrics if present
@@ -172,7 +173,7 @@ export function updateParentGroups(monitorId: string): void {
 			}
 		}
 
-		return latencies.length > 0 ? Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length) : 0;
+		return latencies.length > 0 ? latencies.reduce((a, b) => a + b, 0) / latencies.length : 0;
 	}
 
 	/**
@@ -210,12 +211,12 @@ export function updateParentGroups(monitorId: string): void {
 						const mobileLatency = document.querySelector(`[data-latency-mobile="${item.id}"]`);
 
 						if (desktopLatency) {
-							desktopLatency.textContent = `${newLatency}ms`;
+							desktopLatency.textContent = `${newLatency.toFixed(LATENCY_PRECISION)}ms`;
 							desktopLatency.classList.add("animate-pulse");
 							setTimeout(() => desktopLatency.classList.remove("animate-pulse"), 1000);
 						}
 						if (mobileLatency) {
-							mobileLatency.textContent = `${newLatency}ms`;
+							mobileLatency.textContent = `${newLatency.toFixed(LATENCY_PRECISION)}ms`;
 							mobileLatency.classList.add("animate-pulse");
 							setTimeout(() => mobileLatency.classList.remove("animate-pulse"), 1000);
 						}
@@ -261,7 +262,8 @@ export function renderPage(): void {
 	const averageUptime = uptimeValues.length > 0 ? (uptimeValues.reduce((sum, val) => sum + val, 0) / uptimeValues.length).toFixed(UPTIME_PRECISION) + "%" : "-";
 
 	const latencyValues: number[] = appState.statusData.items.map((i) => i.latency);
-	const averageLatency = latencyValues.length > 0 ? `${Math.round(latencyValues.reduce((sum, val) => sum + val, 0) / latencyValues.length)}ms` : "-";
+	const averageLatency =
+		latencyValues.length > 0 ? (latencyValues.reduce((sum, val) => sum + val, 0) / latencyValues.length).toFixed(LATENCY_PRECISION) + "ms" : "-";
 
 	document.getElementById("uptimeValue")!.textContent = averageUptime;
 	document.getElementById("avgLatency")!.textContent = averageLatency;
@@ -328,7 +330,7 @@ function renderGroupHTML(item: StatusItem): string {
 								? `
 						<div class="text-right">
 							<p class="text-sm text-gray-400">Latency</p>
-							<p data-latency-desktop="${item.id}" class="text-sm font-semibold text-white">${Math.round(item.latency)}ms</p>
+							<p data-latency-desktop="${item.id}" class="text-sm font-semibold text-white">${item.latency.toFixed(LATENCY_PRECISION)}ms</p>
 						</div>
 						`
 								: ""
@@ -339,8 +341,8 @@ function renderGroupHTML(item: StatusItem): string {
 						<div class="text-right">
 							<p class="text-sm text-gray-400">Uptime (${appState.selectedUptimePeriod})</p>
 							<p data-uptime-desktop="${item.id}" class="text-sm font-semibold ${
-										uptimeVal > 99 ? "text-emerald-400" : uptimeVal > 95 ? "text-yellow-400" : "text-red-400"
-								  }">${uptimeVal.toFixed(UPTIME_PRECISION)}%</p>
+								uptimeVal > 99 ? "text-emerald-400" : uptimeVal > 95 ? "text-yellow-400" : "text-red-400"
+							}">${uptimeVal.toFixed(UPTIME_PRECISION)}%</p>
 						</div>
 						`
 								: ""
@@ -371,7 +373,7 @@ function renderGroupHTML(item: StatusItem): string {
 							? `
 					<div class="text-left">
 						<p class="text-xs text-gray-400">Latency</p>
-						<p data-latency-mobile="${item.id}" class="text-sm font-semibold text-white">${Math.round(item.latency)}ms</p>
+						<p data-latency-mobile="${item.id}" class="text-sm font-semibold text-white">${item.latency.toFixed(LATENCY_PRECISION)}ms</p>
 					</div>
 					`
 							: "<div></div>"
@@ -382,8 +384,8 @@ function renderGroupHTML(item: StatusItem): string {
 					<div class="text-right">
 						<p class="text-xs text-gray-400">Uptime (${appState.selectedUptimePeriod})</p>
 						<p data-uptime-mobile="${item.id}" class="text-sm font-semibold ${
-									uptimeVal > 99 ? "text-emerald-400" : uptimeVal > 95 ? "text-yellow-400" : "text-red-400"
-							  }">${uptimeVal.toFixed(UPTIME_PRECISION)}%</p>
+							uptimeVal > 99 ? "text-emerald-400" : uptimeVal > 95 ? "text-yellow-400" : "text-red-400"
+						}">${uptimeVal.toFixed(UPTIME_PRECISION)}%</p>
 					</div>
 					`
 							: ""
@@ -464,8 +466,8 @@ function renderMonitorHTML(item: StatusItem): string {
 				<div class="flex items-center justify-between">
 					<div class="flex items-center space-x-3 min-w-0 flex-1">
 						<div data-status-dot="${item.id}" class="w-2 h-2 rounded-full ${
-		item.status === "up" ? "bg-emerald-500" : item.status === "degraded" ? "bg-yellow-500" : "bg-red-500"
-	} flex-shrink-0"></div>
+							item.status === "up" ? "bg-emerald-500" : item.status === "degraded" ? "bg-yellow-500" : "bg-red-500"
+						} flex-shrink-0"></div>
 						<h4 class="font-medium text-white truncate">${item.name}</h4>
 					</div>
 
@@ -473,14 +475,14 @@ function renderMonitorHTML(item: StatusItem): string {
 					<div class="hidden sm:flex items-center space-x-6">
 						<div class="text-right">
 							<p class="text-sm text-gray-400">Latency</p>
-							<p data-latency-desktop="${item.id}" class="text-sm font-semibold text-white">${Math.round(item.latency)}ms</p>
+							<p data-latency-desktop="${item.id}" class="text-sm font-semibold text-white">${item.latency.toFixed(LATENCY_PRECISION)}ms</p>
 						</div>
 						${customMetricsHtml}
 						<div class="text-right">
 							<p class="text-sm text-gray-400">Uptime (${appState.selectedUptimePeriod})</p>
 							<p data-uptime-desktop="${item.id}" class="text-sm font-semibold ${
-		uptimeVal! > 99 ? "text-emerald-400" : uptimeVal! > 95 ? "text-yellow-400" : "text-red-400"
-	}">${uptimeVal?.toFixed(UPTIME_PRECISION)}%</p>
+								uptimeVal! > 99 ? "text-emerald-400" : uptimeVal! > 95 ? "text-yellow-400" : "text-red-400"
+							}">${uptimeVal?.toFixed(UPTIME_PRECISION)}%</p>
 						</div>
 					</div>
 
@@ -500,14 +502,14 @@ function renderMonitorHTML(item: StatusItem): string {
 				<div class="sm:hidden flex flex-wrap justify-between gap-2 mt-3">
 					<div class="text-left">
 						<p class="text-xs text-gray-400">Latency</p>
-						<p data-latency-mobile="${item.id}" class="text-sm font-semibold text-white">${Math.round(item.latency)}ms</p>
+						<p data-latency-mobile="${item.id}" class="text-sm font-semibold text-white">${item.latency.toFixed(LATENCY_PRECISION)}ms</p>
 					</div>
 					${customMetricsMobileHtml}
 					<div class="text-right">
 						<p class="text-xs text-gray-400">Uptime (${appState.selectedUptimePeriod})</p>
 						<p data-uptime-mobile="${item.id}" class="text-sm font-semibold ${
-		uptimeVal! > 99 ? "text-emerald-400" : uptimeVal! > 95 ? "text-yellow-400" : "text-red-400"
-	}">${uptimeVal?.toFixed(UPTIME_PRECISION)}%</p>
+							uptimeVal! > 99 ? "text-emerald-400" : uptimeVal! > 95 ? "text-yellow-400" : "text-red-400"
+						}">${uptimeVal?.toFixed(UPTIME_PRECISION)}%</p>
 					</div>
 				</div>
 			</div>

@@ -14,6 +14,7 @@ export function getValidatedDefaultPeriod(): Period {
 export const BACKEND_URL = globalThis.BACKEND_URL as string;
 export const STATUS_PAGE_SLUG = globalThis.STATUS_PAGE_SLUG as string;
 export const UPTIME_PRECISION = globalThis.UPTIME_PRECISION as number;
+export const LATENCY_PRECISION = globalThis.LATENCY_PRECISION as number;
 export const DEFAULT_PERIOD = getValidatedDefaultPeriod();
 
 // WebSocket configuration

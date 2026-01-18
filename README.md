@@ -37,16 +37,19 @@ globalThis.BACKEND_URL = "https://your-uptime-monitor-server.com";
 globalThis.STATUS_PAGE_SLUG = "public";
 // Amount of shown decimal places for uptimes
 globalThis.UPTIME_PRECISION = parseInt("3") || 3;
+// Amount of shown decimal places for latency
+globalThis.LATENCY_PRECISION = parseInt("2") || 0;
 // Available options: 1h, 24h, 7d, 30d, 90d, 365d
 globalThis.DEFAULT_PERIOD = "24h";
 ```
 
-| Option             | Description                                               | Default  |
-| ------------------ | --------------------------------------------------------- | -------- |
-| `BACKEND_URL`      | URL of your UptimeMonitor-Server instance                 | Required |
-| `STATUS_PAGE_SLUG` | The slug of the status page defined in your server config | Required |
-| `UPTIME_PRECISION` | Number of decimal places for uptime percentages           | `3`      |
-| `DEFAULT_PERIOD`   | Default time period for uptime display                    | `24h`    |
+| Option              | Description                                               | Default  |
+| ------------------- | --------------------------------------------------------- | -------- |
+| `BACKEND_URL`       | URL of your UptimeMonitor-Server instance                 | Required |
+| `STATUS_PAGE_SLUG`  | The slug of the status page defined in your server config | Required |
+| `UPTIME_PRECISION`  | Number of decimal places for uptime percentages           | `3`      |
+| `LATENCY_PRECISION` | Number of decimal places for latency                      | `0`      |
+| `DEFAULT_PERIOD`    | Default time period for uptime display                    | `24h`    |
 
 ### Example Configuration
 
@@ -55,6 +58,7 @@ globalThis.DEFAULT_PERIOD = "24h";
 globalThis.BACKEND_URL = "https://uptime-api.example.com";
 globalThis.STATUS_PAGE_SLUG = "status";
 globalThis.UPTIME_PRECISION = parseInt("2") || 3;
+globalThis.LATENCY_PRECISION = parseInt("2") || 0;
 globalThis.DEFAULT_PERIOD = "24h";
 ```
 
@@ -88,8 +92,8 @@ backgroundColor: uptimeData.map(
 		v >= 99
 			? "rgba(16, 185, 129, 0.8)" // Green
 			: v >= 95
-			? "rgba(251, 191, 36, 0.8)" // Yellow
-			: "rgba(239, 68, 68, 0.8)" // Red
+				? "rgba(251, 191, 36, 0.8)" // Yellow
+				: "rgba(239, 68, 68, 0.8)", // Red
 );
 ```
 
@@ -179,6 +183,7 @@ services:
       - BACKEND_URL=https://pulse.rabbit-company.com
       - STATUS_PAGE_SLUG=passky
       - UPTIME_PRECISION=3
+			- LATENCY_PRECISION=0
       - DEFAULT_PERIOD=24h
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/health"]

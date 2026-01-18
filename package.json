@@ -1,7 +1,7 @@
 {
 	"name": "uptimemonitor-statuspage",
 	"module": "src/index.ts",
-	"version": "0.2.0",
+	"version": "0.2.1",
 	"type": "module",
 	"private": true,
 	"scripts": {
@@ -14,7 +14,7 @@
 		"tailwindcss": "^4.1.18"
 	},
 	"peerDependencies": {
-		"typescript": "^5"
+		"typescript": "^5.9.3"
 	},
 	"dependencies": {
 		"chart.js": "^4.5.1",
