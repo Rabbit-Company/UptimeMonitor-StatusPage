@@ -7,7 +7,7 @@ A modern, real-time status page frontend for [UptimeMonitor-Server](https://gith
 - 🔄 **Real-Time Updates** - WebSocket connection for instant status changes without page refresh
 - 📈 **Interactive Charts** - Zoom and pan through uptime and latency history with Chart.js
 - 📱 **Responsive Design** - Optimized for desktop, tablet, and mobile devices
-- 🌙 **Dark Theme** - Modern dark UI with smooth animations
+- 🎨 **Multiple Themes** - 9 beautiful themes to choose from (Midnight, Ocean, Forest, Sunset, Lavender, Monochrome, Cyberpunk, Nord, Dracula)
 - 📊 **Custom Metrics** - Display up to 3 custom metrics per monitor (e.g., player count, TPS, memory)
 - 🔔 **Live Notifications** - Toast notifications for status changes
 - 📁 **Group Support** - Hierarchical organization with expandable service groups
@@ -26,6 +26,22 @@ The status page displays:
 
 ![Monitor History](./screenshots/monitor-history.png)
 
+## 🎨 Available Themes
+
+| Theme          | Description                                 |
+| -------------- | ------------------------------------------- |
+| **Midnight**   | Dark theme with emerald accents (default)   |
+| **Ocean**      | Deep blue with cyan accents                 |
+| **Forest**     | Dark green with lime accents                |
+| **Sunset**     | Warm orange/red tones                       |
+| **Lavender**   | Purple/violet tones                         |
+| **Monochrome** | Pure grayscale                              |
+| **Cyberpunk**  | Neon pink/cyan on dark                      |
+| **Nord**       | Arctic north-bluish color palette           |
+| **Dracula**    | Dark purple theme with vibrant neon accents |
+
+Users can switch themes at any time using the theme selector in the header. The selected theme is persisted in localStorage.
+
 ## ⚙️ Configuration
 
 **Important:** Before deploying, you must configure the `config.js` file in your `dist/` or deployment directory.
@@ -41,15 +57,18 @@ globalThis.UPTIME_PRECISION = parseInt("3") || 3;
 globalThis.LATENCY_PRECISION = parseInt("2") || 0;
 // Available options: 1h, 24h, 7d, 30d, 90d, 365d
 globalThis.DEFAULT_PERIOD = "24h";
+// Available themes: midnight, ocean, forest, sunset, lavender, monochrome, cyberpunk, nord, dracula
+globalThis.DEFAULT_THEME = "midnight";
 ```
 
-| Option              | Description                                               | Default  |
-| ------------------- | --------------------------------------------------------- | -------- |
-| `BACKEND_URL`       | URL of your UptimeMonitor-Server instance                 | Required |
-| `STATUS_PAGE_SLUG`  | The slug of the status page defined in your server config | Required |
-| `UPTIME_PRECISION`  | Number of decimal places for uptime percentages           | `3`      |
-| `LATENCY_PRECISION` | Number of decimal places for latency                      | `0`      |
-| `DEFAULT_PERIOD`    | Default time period for uptime display                    | `24h`    |
+| Option              | Description                                               | Default    |
+| ------------------- | --------------------------------------------------------- | ---------- |
+| `BACKEND_URL`       | URL of your UptimeMonitor-Server instance                 | Required   |
+| `STATUS_PAGE_SLUG`  | The slug of the status page defined in your server config | Required   |
+| `UPTIME_PRECISION`  | Number of decimal places for uptime percentages           | `3`        |
+| `LATENCY_PRECISION` | Number of decimal places for latency                      | `0`        |
+| `DEFAULT_PERIOD`    | Default time period for uptime display                    | `24h`      |
+| `DEFAULT_THEME`     | Default color theme                                       | `midnight` |
 
 ### Example Configuration
 
@@ -60,6 +79,7 @@ globalThis.STATUS_PAGE_SLUG = "status";
 globalThis.UPTIME_PRECISION = parseInt("2") || 3;
 globalThis.LATENCY_PRECISION = parseInt("2") || 0;
 globalThis.DEFAULT_PERIOD = "24h";
+globalThis.DEFAULT_THEME = "ocean";
 ```
 
 ## 📡 WebSocket Connection
@@ -73,28 +93,30 @@ The status page automatically connects to your UptimeMonitor-Server via WebSocke
 
 ## 🎨 Customization
 
-### Styling
+### Adding Custom Themes
 
-The project uses Tailwind CSS. Modify `index.css` to customize:
+You can create custom themes by modifying `src/themes.ts`. Each theme requires defining colors for:
 
-- Color scheme
-- Animations
-- Component styles
+- Background colors (primary, secondary, tertiary, hover)
+- Border colors
+- Text colors (primary, secondary, muted)
+- Status colors (up, down, degraded)
+- Accent colors
+- Chart colors
+- Scrollbar colors
+- Notification colors
 
 ### Chart Colors
 
-Edit `charts.ts` to change chart colors:
+Chart colors are automatically derived from the current theme. Each theme defines specific colors for:
 
 ```typescript
-// Uptime chart colors
-backgroundColor: uptimeData.map(
-	(v) =>
-		v >= 99
-			? "rgba(16, 185, 129, 0.8)" // Green
-			: v >= 95
-				? "rgba(251, 191, 36, 0.8)" // Yellow
-				: "rgba(239, 68, 68, 0.8)", // Red
-);
+chartUptime: "rgba(16, 185, 129, 0.8)",      // Green for good uptime
+chartUptimeWarning: "rgba(251, 191, 36, 0.8)", // Yellow for degraded
+chartUptimeCritical: "rgba(239, 68, 68, 0.8)", // Red for down
+chartLatency: "rgba(59, 130, 246, 1)",        // Main latency color
+chartLatencyMin: "rgba(16, 185, 129, 0.5)",   // Min latency line
+chartLatencyMax: "rgba(239, 68, 68, 0.5)",    // Max latency line
 ```
 
 ## 🔒 Security Headers
@@ -146,7 +168,7 @@ http {
 		add_header X-Content-Type-Options "nosniff" always;
 		add_header Referrer-Policy "no-referrer" always;
 		add_header Permissions-Policy "document-domain=()" always;
-		add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self' http: https: ws: wss:; frame-ancestors 'none'; base-uri 'self'; form-action 'self';" always;
+		add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' http: https: ws: wss:; frame-ancestors 'none'; base-uri 'self'; form-action 'self';" always;
 
 		location / {
 			try_files $uri $uri/ =404;
@@ -185,6 +207,8 @@ services:
       - UPTIME_PRECISION=3
       - LATENCY_PRECISION=0
       - DEFAULT_PERIOD=24h
+      # Available themes: midnight, ocean, forest, sunset, lavender, monochrome, cyberpunk, nord, dracula
+      - DEFAULT_THEME=midnight
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/health"]
       interval: 30s

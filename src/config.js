@@ -6,3 +6,5 @@ globalThis.UPTIME_PRECISION = parseInt("YOUR_UPTIME_PRECISION_HERE") || 3;
 globalThis.LATENCY_PRECISION = parseInt("YOUR_LATENCY_PRECISION_HERE") || 0;
 // Available options: 1h, 24h, 7d, 30d, 90d, 365d
 globalThis.DEFAULT_PERIOD = "YOUR_DEFAULT_PERIOD_HERE";
+// Available themes: midnight, ocean, forest, sunset, lavender, monochrome, cyberpunk, nord, dracula
+globalThis.DEFAULT_THEME = "YOUR_DEFAULT_THEME_HERE";

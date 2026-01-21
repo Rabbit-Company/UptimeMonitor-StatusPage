@@ -1,5 +1,5 @@
 import type { StatusItem, Period } from "./types";
-import { UPTIME_PRECISION } from "./config";
+import { UPTIME_PRECISION, LATENCY_PRECISION } from "./config";
 import { appState } from "./state";
 import { getUptimeValue, getDateTime } from "./utils";
 import { loadGroupHistory, loadMonitorHistory } from "./charts";
@@ -16,17 +16,17 @@ export function updateOverallStatus(): void {
 	const text = document.getElementById("overallStatusText")!;
 
 	if (hasDown) {
-		indicator.className = "w-2 h-2 rounded-full bg-red-500 animate-pulse-slow";
+		indicator.className = "w-2 h-2 rounded-full bg-[var(--status-down)] animate-pulse-slow";
 		text.textContent = "Partial Outage";
-		text.className = "text-sm text-red-400";
+		text.className = "text-sm text-[var(--status-down-text)]";
 	} else if (hasDegraded) {
-		indicator.className = "w-2 h-2 rounded-full bg-yellow-500 animate-pulse-slow";
+		indicator.className = "w-2 h-2 rounded-full bg-[var(--status-degraded)] animate-pulse-slow";
 		text.textContent = "Degraded Performance";
-		text.className = "text-sm text-yellow-400";
+		text.className = "text-sm text-[var(--status-degraded-text)]";
 	} else {
-		indicator.className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse-slow";
+		indicator.className = "w-2 h-2 rounded-full bg-[var(--status-up)] animate-pulse-slow";
 		text.textContent = "All Systems Operational";
-		text.className = "text-sm text-emerald-400";
+		text.className = "text-sm text-[var(--status-up-text)]";
 	}
 }
 
@@ -71,16 +71,14 @@ export function updateSummaryStats(): void {
  * Update a specific monitor's UI
  */
 export function updateMonitorUI(monitorId: string, monitor: StatusItem): void {
-	// Update status dot using data attribute
 	const statusDot = document.querySelector(`[data-status-dot="${monitorId}"]`);
 	if (statusDot) {
-		statusDot.className = `w-2 h-2 rounded-full flex-shrink-0 ${
-			monitor.status === "up" ? "bg-emerald-500" : monitor.status === "degraded" ? "bg-yellow-500" : "bg-red-500"
-		}`;
-		statusDot.setAttribute("data-status-dot", monitorId); // Preserve the data attribute
+		const statusClass =
+			monitor.status === "up" ? "bg-[var(--status-up)]" : monitor.status === "degraded" ? "bg-[var(--status-degraded)]" : "bg-[var(--status-down)]";
+		statusDot.className = `w-2 h-2 rounded-full flex-shrink-0 ${statusClass}`;
+		statusDot.setAttribute("data-status-dot", monitorId);
 	}
 
-	// Update latency (desktop) using data attribute
 	const desktopLatency = document.querySelector(`[data-latency-desktop="${monitorId}"]`);
 	if (desktopLatency) {
 		desktopLatency.textContent = `${monitor.latency.toFixed(LATENCY_PRECISION)}ms`;
@@ -88,13 +86,11 @@ export function updateMonitorUI(monitorId: string, monitor: StatusItem): void {
 		setTimeout(() => desktopLatency.classList.remove("animate-pulse"), 1000);
 	}
 
-	// Update latency (mobile) using data attribute
 	const mobileLatency = document.querySelector(`[data-latency-mobile="${monitorId}"]`);
 	if (mobileLatency) {
 		mobileLatency.textContent = `${monitor.latency.toFixed(LATENCY_PRECISION)}ms`;
 	}
 
-	// Update custom metrics if present
 	if (monitor.custom1?.value !== undefined) {
 		const custom1Desktop = document.querySelector(`[data-custom1-desktop="${monitorId}"]`);
 		const custom1Mobile = document.querySelector(`[data-custom1-mobile="${monitorId}"]`);
@@ -126,9 +122,6 @@ export function updateMonitorUI(monitorId: string, monitor: StatusItem): void {
 export function updateParentGroups(monitorId: string): void {
 	if (!appState.statusData) return;
 
-	/**
-	 * Check if an item contains the monitor (recursively)
-	 */
 	function containsMonitor(item: StatusItem, targetId: string): boolean {
 		if (item.id === targetId) return true;
 		if (item.children) {
@@ -137,9 +130,6 @@ export function updateParentGroups(monitorId: string): void {
 		return false;
 	}
 
-	/**
-	 * Calculate group status based on children (recursively)
-	 */
 	function calculateGroupStatus(item: StatusItem): "up" | "down" | "degraded" {
 		if (!item.children) return item.status;
 
@@ -156,9 +146,6 @@ export function updateParentGroups(monitorId: string): void {
 		return hasDown ? "down" : hasDegraded ? "degraded" : "up";
 	}
 
-	/**
-	 * Calculate group latency based on all descendant monitors (recursively)
-	 */
 	function calculateGroupLatency(item: StatusItem): number {
 		if (!item.children) return item.latency || 0;
 
@@ -176,37 +163,28 @@ export function updateParentGroups(monitorId: string): void {
 		return latencies.length > 0 ? latencies.reduce((a, b) => a + b, 0) / latencies.length : 0;
 	}
 
-	/**
-	 * Update all ancestor groups of the changed monitor
-	 */
 	function updateAncestorGroups(items: StatusItem[]): void {
 		for (const item of items) {
 			if (item.type === "group" && item.children) {
-				// First, recursively process children to update nested groups
 				updateAncestorGroups(item.children);
 
-				// Check if this group contains the changed monitor
 				if (containsMonitor(item, monitorId)) {
-					// Update status
 					const newStatus = calculateGroupStatus(item);
 					if (item.status !== newStatus) {
 						item.status = newStatus;
 
-						// Update status dot using data attribute
 						const statusDot = document.querySelector(`[data-status-dot="${item.id}"]`);
 						if (statusDot) {
-							statusDot.className = `w-2 h-2 rounded-full flex-shrink-0 ${
-								newStatus === "up" ? "bg-emerald-500" : newStatus === "degraded" ? "bg-yellow-500" : "bg-red-500"
-							}`;
+							const statusClass =
+								newStatus === "up" ? "bg-[var(--status-up)]" : newStatus === "degraded" ? "bg-[var(--status-degraded)]" : "bg-[var(--status-down)]";
+							statusDot.className = `w-2 h-2 rounded-full flex-shrink-0 ${statusClass}`;
 						}
 					}
 
-					// Update latency
 					const newLatency = calculateGroupLatency(item);
 					if (newLatency > 0) {
 						item.latency = newLatency;
 
-						// Update group latency displays using data attributes with pulse animation
 						const desktopLatency = document.querySelector(`[data-latency-desktop="${item.id}"]`);
 						const mobileLatency = document.querySelector(`[data-latency-mobile="${item.id}"]`);
 
@@ -239,7 +217,6 @@ export function renderPage(): void {
 
 	updateOverallStatus();
 
-	// Calculate summary stats
 	let servicesUp = 0;
 	let servicesDown = 0;
 	let servicesDegraded = 0;
@@ -275,9 +252,6 @@ export function renderPage(): void {
 	renderServices();
 }
 
-/**
- * Render services list
- */
 function renderServices(): void {
 	if (!appState.statusData) return;
 
@@ -291,9 +265,6 @@ function renderServices(): void {
 	addServiceEventListeners();
 }
 
-/**
- * Render a single service item (group or monitor)
- */
 function renderServiceItem(item: StatusItem, depth: number): HTMLElement {
 	const div = document.createElement("div");
 	div.className = depth > 0 ? "ml-0 lg:ml-8" : "";
@@ -307,30 +278,38 @@ function renderServiceItem(item: StatusItem, depth: number): HTMLElement {
 	return div;
 }
 
-/**
- * Render group HTML
- */
+function getUptimeColorClass(value: number): string {
+	if (value > 99) return "text-[var(--status-up-text)]";
+	if (value > 95) return "text-[var(--status-degraded-text)]";
+	return "text-[var(--status-down-text)]";
+}
+
+function getStatusBgClass(status: string): string {
+	if (status === "up") return "bg-[var(--status-up)]";
+	if (status === "degraded") return "bg-[var(--status-degraded)]";
+	return "bg-[var(--status-down)]";
+}
+
 function renderGroupHTML(item: StatusItem): string {
 	const isGroupExpanded = appState.isGroupExpanded(item.id);
 	const uptimeVal = getUptimeValue(item, appState.selectedUptimePeriod);
-	const statusColor = item.status === "up" ? "bg-emerald-500" : item.status === "degraded" ? "bg-yellow-500" : "bg-red-500";
+	const statusColor = getStatusBgClass(item.status);
 
 	return `
-		<div class="bg-gray-900/50 backdrop-blur rounded-xl border border-gray-800 overflow-hidden">
+		<div class="bg-[var(--bg-secondary)] backdrop-blur rounded-xl border border-[var(--border-primary)] overflow-hidden">
 			<div class="px-6 py-4 group-header cursor-pointer group-toggle" data-group-id="${item.id}">
 				<div class="flex items-center justify-between">
 					<div class="flex items-center space-x-3 min-w-0 flex-1">
 						<div data-status-dot="${item.id}" class="w-2 h-2 rounded-full ${statusColor} flex-shrink-0"></div>
-						<h3 class="text-lg font-semibold text-white truncate">${item.name}</h3>
+						<h3 class="text-lg font-semibold text-[var(--text-primary)] truncate">${item.name}</h3>
 					</div>
-					<!-- Desktop metrics -->
 					<div class="hidden sm:flex items-center space-x-6">
 						${
 							item.latency !== undefined && item.latency > 0
 								? `
 						<div class="text-right">
-							<p class="text-sm text-gray-400">Latency</p>
-							<p data-latency-desktop="${item.id}" class="text-sm font-semibold text-white">${item.latency.toFixed(LATENCY_PRECISION)}ms</p>
+							<p class="text-sm text-[var(--text-muted)]">Latency</p>
+							<p data-latency-desktop="${item.id}" class="text-sm font-semibold text-[var(--text-primary)]">${item.latency.toFixed(LATENCY_PRECISION)}ms</p>
 						</div>
 						`
 								: ""
@@ -339,41 +318,33 @@ function renderGroupHTML(item: StatusItem): string {
 							uptimeVal !== undefined
 								? `
 						<div class="text-right">
-							<p class="text-sm text-gray-400">Uptime (${appState.selectedUptimePeriod})</p>
-							<p data-uptime-desktop="${item.id}" class="text-sm font-semibold ${
-								uptimeVal > 99 ? "text-emerald-400" : uptimeVal > 95 ? "text-yellow-400" : "text-red-400"
-							}">${uptimeVal.toFixed(UPTIME_PRECISION)}%</p>
+							<p class="text-sm text-[var(--text-muted)]">Uptime (${appState.selectedUptimePeriod})</p>
+							<p data-uptime-desktop="${item.id}" class="text-sm font-semibold ${getUptimeColorClass(uptimeVal)}">${uptimeVal.toFixed(UPTIME_PRECISION)}%</p>
 						</div>
 						`
 								: ""
 						}
 					</div>
-					<!-- Action buttons -->
 					<div class="flex items-center space-x-2 ml-4">
-						<button data-history-id="${
-							item.id
-						}" data-history-type="group" class="cursor-pointer history-btn p-2 hover:bg-gray-800 rounded-lg transition-colors" title="View History">
-							<svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<button data-history-id="${item.id}" data-history-type="group" class="cursor-pointer history-btn p-2 hover:bg-[var(--bg-hover)] rounded-lg transition-colors" title="View History">
+							<svg class="w-5 h-5 text-[var(--text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
 							</svg>
 						</button>
-						<button data-group-id="${item.id}" class="cursor-pointer group-toggle p-2 hover:bg-gray-800 rounded-lg transition-colors" title="Toggle Group">
-							<svg class="toggle-group-icon w-5 h-5 text-gray-400 transform transition-transform ${
-								isGroupExpanded ? "rotate-180" : ""
-							}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+						<button data-group-id="${item.id}" class="cursor-pointer group-toggle p-2 hover:bg-[var(--bg-hover)] rounded-lg transition-colors" title="Toggle Group">
+							<svg class="toggle-group-icon w-5 h-5 text-[var(--text-muted)] transform transition-transform ${isGroupExpanded ? "rotate-180" : ""}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
 							</svg>
 						</button>
 					</div>
 				</div>
-				<!-- Mobile metrics -->
 				<div class="sm:hidden flex justify-between mt-3">
 					${
 						item.latency !== undefined && item.latency > 0
 							? `
 					<div class="text-left">
-						<p class="text-xs text-gray-400">Latency</p>
-						<p data-latency-mobile="${item.id}" class="text-sm font-semibold text-white">${item.latency.toFixed(LATENCY_PRECISION)}ms</p>
+						<p class="text-xs text-[var(--text-muted)]">Latency</p>
+						<p data-latency-mobile="${item.id}" class="text-sm font-semibold text-[var(--text-primary)]">${item.latency.toFixed(LATENCY_PRECISION)}ms</p>
 					</div>
 					`
 							: "<div></div>"
@@ -382,33 +353,26 @@ function renderGroupHTML(item: StatusItem): string {
 						uptimeVal !== undefined
 							? `
 					<div class="text-right">
-						<p class="text-xs text-gray-400">Uptime (${appState.selectedUptimePeriod})</p>
-						<p data-uptime-mobile="${item.id}" class="text-sm font-semibold ${
-							uptimeVal > 99 ? "text-emerald-400" : uptimeVal > 95 ? "text-yellow-400" : "text-red-400"
-						}">${uptimeVal.toFixed(UPTIME_PRECISION)}%</p>
+						<p class="text-xs text-[var(--text-muted)]">Uptime (${appState.selectedUptimePeriod})</p>
+						<p data-uptime-mobile="${item.id}" class="text-sm font-semibold ${getUptimeColorClass(uptimeVal)}">${uptimeVal.toFixed(UPTIME_PRECISION)}%</p>
 					</div>
 					`
 							: ""
 					}
 				</div>
 			</div>
-			<!-- Group children -->
 			<div id="group-${item.id}" class="${isGroupExpanded ? "" : "hidden"}">
-			<div class="px-6 py-4 border-t border-gray-800 space-y-4">
-				${item.children?.map((child) => renderServiceItem(child, 1).outerHTML).join("") || ""}
+				<div class="px-6 py-4 border-t border-[var(--border-primary)] space-y-4">
+					${item.children?.map((child) => renderServiceItem(child, 1).outerHTML).join("") || ""}
+				</div>
 			</div>
-		</div>
 		</div>
 	`;
 }
 
-/**
- * Render monitor HTML
- */
 function renderMonitorHTML(item: StatusItem): string {
 	const uptimeVal = getUptimeValue(item, appState.selectedUptimePeriod);
 
-	// Build custom metrics display
 	let customMetricsHtml = "";
 	let customMetricsMobileHtml = "";
 
@@ -416,14 +380,14 @@ function renderMonitorHTML(item: StatusItem): string {
 		const unit = item.custom1.config.unit || "";
 		customMetricsHtml += `
 			<div class="text-right">
-				<p class="text-sm text-gray-400">${item.custom1.config.name}</p>
-				<p data-custom1-desktop="${item.id}" class="text-sm font-semibold text-blue-400">${item.custom1.value} ${unit}</p>
+				<p class="text-sm text-[var(--text-muted)]">${item.custom1.config.name}</p>
+				<p data-custom1-desktop="${item.id}" class="text-sm font-semibold text-[var(--accent-tertiary)]">${item.custom1.value} ${unit}</p>
 			</div>
 		`;
 		customMetricsMobileHtml += `
 			<div class="text-center">
-				<p class="text-xs text-gray-400">${item.custom1.config.name}</p>
-				<p data-custom1-mobile="${item.id}" class="text-sm font-semibold text-blue-400">${item.custom1.value} ${unit}</p>
+				<p class="text-xs text-[var(--text-muted)]">${item.custom1.config.name}</p>
+				<p data-custom1-mobile="${item.id}" class="text-sm font-semibold text-[var(--accent-tertiary)]">${item.custom1.value} ${unit}</p>
 			</div>
 		`;
 	}
@@ -432,14 +396,14 @@ function renderMonitorHTML(item: StatusItem): string {
 		const unit = item.custom2.config.unit || "";
 		customMetricsHtml += `
 			<div class="text-right">
-				<p class="text-sm text-gray-400">${item.custom2.config.name}</p>
-				<p data-custom2-desktop="${item.id}" class="text-sm font-semibold text-purple-400">${item.custom2.value} ${unit}</p>
+				<p class="text-sm text-[var(--text-muted)]">${item.custom2.config.name}</p>
+				<p data-custom2-desktop="${item.id}" class="text-sm font-semibold text-[var(--accent-secondary)]">${item.custom2.value} ${unit}</p>
 			</div>
 		`;
 		customMetricsMobileHtml += `
 			<div class="text-center">
-				<p class="text-xs text-gray-400">${item.custom2.config.name}</p>
-				<p data-custom2-mobile="${item.id}" class="text-sm font-semibold text-purple-400">${item.custom2.value} ${unit}</p>
+				<p class="text-xs text-[var(--text-muted)]">${item.custom2.config.name}</p>
+				<p data-custom2-mobile="${item.id}" class="text-sm font-semibold text-[var(--accent-secondary)]">${item.custom2.value} ${unit}</p>
 			</div>
 		`;
 	}
@@ -448,68 +412,54 @@ function renderMonitorHTML(item: StatusItem): string {
 		const unit = item.custom3.config.unit || "";
 		customMetricsHtml += `
 			<div class="text-right">
-				<p class="text-sm text-gray-400">${item.custom3.config.name}</p>
-				<p data-custom3-desktop="${item.id}" class="text-sm font-semibold text-cyan-400">${item.custom3.value} ${unit}</p>
+				<p class="text-sm text-[var(--text-muted)]">${item.custom3.config.name}</p>
+				<p data-custom3-desktop="${item.id}" class="text-sm font-semibold text-[var(--accent-primary)]">${item.custom3.value} ${unit}</p>
 			</div>
 		`;
 		customMetricsMobileHtml += `
 			<div class="text-center">
-				<p class="text-xs text-gray-400">${item.custom3.config.name}</p>
-				<p data-custom3-mobile="${item.id}" class="text-sm font-semibold text-cyan-400">${item.custom3.value} ${unit}</p>
+				<p class="text-xs text-[var(--text-muted)]">${item.custom3.config.name}</p>
+				<p data-custom3-mobile="${item.id}" class="text-sm font-semibold text-[var(--accent-primary)]">${item.custom3.value} ${unit}</p>
 			</div>
 		`;
 	}
 
 	return `
-		<div class="bg-gray-900/50 backdrop-blur rounded-xl border border-gray-800 overflow-hidden">
+		<div class="bg-[var(--bg-secondary)] backdrop-blur rounded-xl border border-[var(--border-primary)] overflow-hidden">
 			<div class="px-6 py-4">
 				<div class="flex items-center justify-between">
 					<div class="flex items-center space-x-3 min-w-0 flex-1">
-						<div data-status-dot="${item.id}" class="w-2 h-2 rounded-full ${
-							item.status === "up" ? "bg-emerald-500" : item.status === "degraded" ? "bg-yellow-500" : "bg-red-500"
-						} flex-shrink-0"></div>
-						<h4 class="font-medium text-white truncate">${item.name}</h4>
+						<div data-status-dot="${item.id}" class="w-2 h-2 rounded-full ${getStatusBgClass(item.status)} flex-shrink-0"></div>
+						<h4 class="font-medium text-[var(--text-primary)] truncate">${item.name}</h4>
 					</div>
-
-					<!-- Desktop metrics -->
 					<div class="hidden sm:flex items-center space-x-6">
 						<div class="text-right">
-							<p class="text-sm text-gray-400">Latency</p>
-							<p data-latency-desktop="${item.id}" class="text-sm font-semibold text-white">${item.latency.toFixed(LATENCY_PRECISION)}ms</p>
+							<p class="text-sm text-[var(--text-muted)]">Latency</p>
+							<p data-latency-desktop="${item.id}" class="text-sm font-semibold text-[var(--text-primary)]">${item.latency.toFixed(LATENCY_PRECISION)}ms</p>
 						</div>
 						${customMetricsHtml}
 						<div class="text-right">
-							<p class="text-sm text-gray-400">Uptime (${appState.selectedUptimePeriod})</p>
-							<p data-uptime-desktop="${item.id}" class="text-sm font-semibold ${
-								uptimeVal! > 99 ? "text-emerald-400" : uptimeVal! > 95 ? "text-yellow-400" : "text-red-400"
-							}">${uptimeVal?.toFixed(UPTIME_PRECISION)}%</p>
+							<p class="text-sm text-[var(--text-muted)]">Uptime (${appState.selectedUptimePeriod})</p>
+							<p data-uptime-desktop="${item.id}" class="text-sm font-semibold ${getUptimeColorClass(uptimeVal!)}">${uptimeVal?.toFixed(UPTIME_PRECISION)}%</p>
 						</div>
 					</div>
-
-					<!-- History button -->
 					<div class="ml-4">
-						<button data-history-id="${
-							item.id
-						}" data-history-type="monitor" class="cursor-pointer history-btn p-2 hover:bg-gray-800 rounded-lg transition-colors" title="View History">
-							<svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<button data-history-id="${item.id}" data-history-type="monitor" class="cursor-pointer history-btn p-2 hover:bg-[var(--bg-hover)] rounded-lg transition-colors" title="View History">
+							<svg class="w-5 h-5 text-[var(--text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
 							</svg>
 						</button>
 					</div>
 				</div>
-
-				<!-- Mobile metrics -->
 				<div class="sm:hidden flex flex-wrap justify-between gap-2 mt-3">
 					<div class="text-left">
-						<p class="text-xs text-gray-400">Latency</p>
-						<p data-latency-mobile="${item.id}" class="text-sm font-semibold text-white">${item.latency.toFixed(LATENCY_PRECISION)}ms</p>
+						<p class="text-xs text-[var(--text-muted)]">Latency</p>
+						<p data-latency-mobile="${item.id}" class="text-sm font-semibold text-[var(--text-primary)]">${item.latency.toFixed(LATENCY_PRECISION)}ms</p>
 					</div>
 					${customMetricsMobileHtml}
 					<div class="text-right">
-						<p class="text-xs text-gray-400">Uptime (${appState.selectedUptimePeriod})</p>
-						<p data-uptime-mobile="${item.id}" class="text-sm font-semibold ${
-							uptimeVal! > 99 ? "text-emerald-400" : uptimeVal! > 95 ? "text-yellow-400" : "text-red-400"
-						}">${uptimeVal?.toFixed(UPTIME_PRECISION)}%</p>
+						<p class="text-xs text-[var(--text-muted)]">Uptime (${appState.selectedUptimePeriod})</p>
+						<p data-uptime-mobile="${item.id}" class="text-sm font-semibold ${getUptimeColorClass(uptimeVal!)}">${uptimeVal?.toFixed(UPTIME_PRECISION)}%</p>
 					</div>
 				</div>
 			</div>
@@ -517,23 +467,17 @@ function renderMonitorHTML(item: StatusItem): string {
 	`;
 }
 
-/**
- * Add event listeners to service items
- */
 function addServiceEventListeners(): void {
-	// Group header click handlers
 	document.querySelectorAll(".group-header").forEach((header) => {
 		header.addEventListener("click", (e) => {
 			if ((e.target as HTMLElement).closest("button:not(.group-toggle)")) {
 				return;
 			}
-
 			const groupId = (e.currentTarget as HTMLElement).getAttribute("data-group-id");
 			if (groupId) toggleGroupUI(groupId);
 		});
 	});
 
-	// Group toggle buttons
 	document.querySelectorAll("button.group-toggle").forEach((button) => {
 		button.addEventListener("click", (e) => {
 			e.stopPropagation();
@@ -542,7 +486,6 @@ function addServiceEventListeners(): void {
 		});
 	});
 
-	// History buttons
 	document.querySelectorAll(".history-btn").forEach((button) => {
 		button.addEventListener("click", async (e) => {
 			const btn = e.currentTarget as HTMLElement;
@@ -557,9 +500,6 @@ function addServiceEventListeners(): void {
 	});
 }
 
-/**
- * Toggle group expansion in UI
- */
 function toggleGroupUI(groupId: string): void {
 	const element = document.getElementById(`group-${groupId}`);
 	if (!element) return;
@@ -567,7 +507,6 @@ function toggleGroupUI(groupId: string): void {
 	const isExpanded = appState.toggleGroup(groupId);
 	element.classList.toggle("hidden", !isExpanded);
 
-	// Update chevron
 	const chevrons = document.querySelectorAll(`[data-group-id="${groupId}"] svg`);
 	chevrons.forEach((chevron) => {
 		if (!chevron.classList.contains("toggle-group-icon")) return;
@@ -575,9 +514,6 @@ function toggleGroupUI(groupId: string): void {
 	});
 }
 
-/**
- * Open history modal for an item
- */
 export async function openHistoryModal(item: StatusItem): Promise<void> {
 	appState.currentModalItem = item;
 	appState.currentModalPeriod = appState.selectedUptimePeriod as Period;
@@ -591,9 +527,6 @@ export async function openHistoryModal(item: StatusItem): Promise<void> {
 	await loadModalHistory(item, appState.currentModalPeriod);
 }
 
-/**
- * Close history modal
- */
 export function closeHistoryModal(): void {
 	document.getElementById("historyModal")!.classList.add("hidden");
 	document.body.style.overflow = "auto";
@@ -602,20 +535,17 @@ export function closeHistoryModal(): void {
 	appState.currentModalItem = null;
 }
 
-/**
- * Load history data for modal
- */
-async function loadModalHistory(item: StatusItem, period: Period): Promise<void> {
+export async function loadModalHistory(item: StatusItem, period: Period): Promise<void> {
 	try {
 		appState.currentModalPeriod = period;
 
-		// Update button states
 		document.querySelectorAll(".modal-period-btn").forEach((btn) => {
 			const btnPeriod = btn.getAttribute("data-modal-period");
 			if (btnPeriod === period) {
-				btn.className = "modal-period-btn cursor-pointer px-4 py-2 text-sm rounded-lg bg-gray-700 text-gray-300 transition-colors";
+				btn.className = "modal-period-btn cursor-pointer px-4 py-2 text-sm rounded-lg bg-[var(--bg-tertiary)] text-[var(--text-muted)] transition-colors";
 			} else {
-				btn.className = "modal-period-btn cursor-pointer px-4 py-2 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors";
+				btn.className =
+					"modal-period-btn cursor-pointer px-4 py-2 text-sm rounded-lg bg-[var(--bg-hover)] hover:bg-[var(--bg-tertiary)] text-[var(--text-muted)] transition-colors";
 			}
 		});
 
@@ -629,13 +559,7 @@ async function loadModalHistory(item: StatusItem, period: Period): Promise<void>
 	}
 }
 
-/**
- * Change the uptime period and re-render
- */
 export function changeUptimePeriod(period: string): void {
 	appState.selectedUptimePeriod = period;
 	renderPage();
 }
-
-// Export for window bindings
-export { loadModalHistory };

@@ -27,25 +27,25 @@ function updateConnectionStatus(status: ConnectionStatus): void {
 
 	switch (status) {
 		case "connected":
-			indicator.className = "w-2 h-2 rounded-full bg-emerald-500";
+			indicator.className = "w-2 h-2 rounded-full bg-[var(--status-up)]";
 			text.textContent = "Live";
-			text.className = "text-sm text-emerald-400";
+			text.className = "text-sm text-[var(--status-up-text)]";
 			break;
 		case "disconnected":
 		case "error":
-			indicator.className = "w-2 h-2 rounded-full bg-red-500";
+			indicator.className = "w-2 h-2 rounded-full bg-[var(--status-down)]";
 			text.textContent = "Disconnected";
-			text.className = "text-sm text-red-400";
+			text.className = "text-sm text-[var(--status-down-text)]";
 			break;
 		case "reconnecting":
-			indicator.className = "w-2 h-2 rounded-full bg-yellow-500 animate-pulse";
+			indicator.className = "w-2 h-2 rounded-full bg-[var(--status-degraded)] animate-pulse";
 			text.textContent = "Reconnecting...";
-			text.className = "text-sm text-yellow-400";
+			text.className = "text-sm text-[var(--status-degraded-text)]";
 			break;
 		case "failed":
-			indicator.className = "w-2 h-2 rounded-full bg-red-500";
+			indicator.className = "w-2 h-2 rounded-full bg-[var(--status-down)]";
 			text.textContent = "Connection failed";
-			text.className = "text-sm text-red-400";
+			text.className = "text-sm text-[var(--status-down-text)]";
 			break;
 	}
 }
@@ -71,7 +71,6 @@ function handleWSOpen(): void {
 function handleWSMessage(event: MessageEvent): void {
 	try {
 		const message: WSMessage = JSON.parse(event.data);
-		//console.log("[WS] Received:", message.action);
 
 		switch (message.action) {
 			case "connected":
@@ -121,7 +120,6 @@ function handlePulseUpdate(message: WSPulseMessage): void {
 		monitor.latency = latency;
 		monitor.lastCheck = timestamp;
 
-		// Update custom metrics if present
 		if (custom1 !== null && monitor.custom1) {
 			monitor.custom1.value = custom1;
 		}
@@ -233,7 +231,6 @@ function scheduleReconnect(): void {
 		return;
 	}
 
-	// Exponential backoff with jitter
 	const delay = Math.min(WS_RECONNECT_BASE_DELAY * Math.pow(2, appState.wsReconnectAttempts) + Math.random() * 1000, WS_RECONNECT_MAX_DELAY);
 
 	console.log(`[WS] Scheduling reconnection attempt ${appState.wsReconnectAttempts + 1} in ${Math.round(delay)}ms...`);
@@ -254,7 +251,7 @@ function scheduleReconnect(): void {
  */
 export function initWebSocket(): void {
 	if (appState.ws && (appState.ws.readyState === WebSocket.CONNECTING || appState.ws.readyState === WebSocket.OPEN)) {
-		return; // Already connected or connecting
+		return;
 	}
 
 	const wsUrl = getWebSocketUrl();

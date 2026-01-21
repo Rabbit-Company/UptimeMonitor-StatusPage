@@ -7,42 +7,64 @@
 		<link rel="shortcut icon" type="image/svg+xml" href="logo.svg" />
 		<meta
 			http-equiv="Content-Security-Policy"
-			content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self' http: https: ws: wss:; base-uri 'self'; form-action 'self';"
+			content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' http: https: ws: wss:; base-uri 'self'; form-action 'self';"
 		/>
 		<link rel="stylesheet" href="index.css" />
 	</head>
-	<body class="bg-gray-950 text-gray-100">
+	<body class="bg-[var(--bg-primary)] text-[var(--text-secondary)]">
 		<div id="app" class="min-h-screen">
 			<!-- Loading State -->
 			<div id="loading" class="flex items-center justify-center min-h-screen">
 				<div class="text-center">
-					<div class="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-					<p class="text-gray-400">Loading status data...</p>
+					<div class="w-16 h-16 border-4 border-[var(--accent-primary)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+					<p class="text-[var(--text-muted)]">Loading status data...</p>
 				</div>
 			</div>
 
 			<!-- Main Content (hidden initially) -->
 			<div id="content" class="hidden">
 				<!-- Header -->
-				<header class="bg-gray-900/50 backdrop-blur-lg border-b border-gray-800 sticky top-0 z-50">
+				<header class="bg-[var(--bg-secondary)] backdrop-blur-lg border-b border-[var(--border-primary)] sticky top-0 z-50">
 					<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 sm:py-3 lg:py-6">
 						<div class="flex items-center justify-center lg:justify-between">
 							<!-- Title section - hidden on small screens, visible on larger -->
 							<div class="hidden lg:block">
-								<h1 id="serviceName" class="text-xl sm:text-2xl lg:text-3xl font-bold text-white"></h1>
-								<p class="text-gray-400 mt-1 hidden sm:block">Service Status Monitor</p>
+								<h1 id="serviceName" class="text-xl sm:text-2xl lg:text-3xl font-bold text-[var(--text-primary)]"></h1>
+								<p class="text-[var(--text-muted)] mt-1 hidden sm:block">Service Status Monitor</p>
 							</div>
 
 							<!-- Overall status and WebSocket indicator -->
 							<div class="flex items-center space-x-4">
-								<div id="overallStatus" class="flex items-center space-x-1.5 px-2 py-1 rounded-md bg-gray-800/50">
-									<div id="overallStatusIndicator" class="w-2 h-2 rounded-full bg-gray-500"></div>
-									<span id="overallStatusText" class="text-xs text-gray-400">Connecting...</span>
+								<div id="overallStatus" class="flex items-center space-x-1.5 px-2 py-1 rounded-md bg-[var(--bg-tertiary)]">
+									<div id="overallStatusIndicator" class="w-2 h-2 rounded-full bg-[var(--text-muted)]"></div>
+									<span id="overallStatusText" class="text-xs text-[var(--text-muted)]">Connecting...</span>
 								</div>
 								<!-- WebSocket connection status -->
-								<div class="flex items-center space-x-1.5 px-2 py-1 rounded-md bg-gray-800/50">
-									<div id="wsStatusIndicator" class="w-2 h-2 rounded-full bg-gray-500"></div>
-									<span id="wsStatusText" class="text-xs text-gray-400">Connecting...</span>
+								<div class="flex items-center space-x-1.5 px-2 py-1 rounded-md bg-[var(--bg-tertiary)]">
+									<div id="wsStatusIndicator" class="w-2 h-2 rounded-full bg-[var(--text-muted)]"></div>
+									<span id="wsStatusText" class="text-xs text-[var(--text-muted)]">Connecting...</span>
+								</div>
+								<!-- Theme Selector -->
+								<div class="hidden sm:flex items-center space-x-1.5 px-2 py-1 rounded-md bg-[var(--bg-hover)]">
+									<svg class="w-4 h-4 text-[var(--text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
+										></path>
+									</svg>
+									<select id="themeSelector" class="cursor-pointer bg-[var(--bg-hover)] text-[var(--text-muted)] text-xs focus:outline-none">
+										<option value="midnight">Midnight</option>
+										<option value="ocean">Ocean</option>
+										<option value="forest">Forest</option>
+										<option value="sunset">Sunset</option>
+										<option value="lavender">Lavender</option>
+										<option value="monochrome">Monochrome</option>
+										<option value="cyberpunk">Cyberpunk</option>
+										<option value="nord">Nord</option>
+										<option value="dracula">Dracula</option>
+									</select>
 								</div>
 							</div>
 						</div>
@@ -53,12 +75,12 @@
 				<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 					<!-- Summary Cards -->
 					<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-						<div class="bg-gray-900/50 backdrop-blur rounded-xl p-6 border border-gray-800">
+						<div class="bg-[var(--bg-secondary)] backdrop-blur rounded-xl p-6 border border-[var(--border-primary)]">
 							<div class="flex items-center justify-between mb-2">
-								<p class="text-gray-400 text-sm">Overall Uptime</p>
+								<p class="text-[var(--text-muted)] text-sm">Overall Uptime</p>
 								<select
 									id="uptimePeriodSelector"
-									class="cursor-pointer bg-gray-800 text-gray-300 text-xs rounded px-2 py-1 border border-gray-700 focus:outline-none focus:border-emerald-500"
+									class="cursor-pointer bg-[var(--bg-hover)] text-[var(--text-muted)] text-xs rounded px-2 py-1 border border-[var(--border-secondary)] focus:outline-none focus:border-[var(--accent-primary)]"
 								>
 									<option value="1h">1h</option>
 									<option value="24h" selected>24h</option>
@@ -68,25 +90,25 @@
 									<option value="365d">365d</option>
 								</select>
 							</div>
-							<p id="uptimeValue" class="text-2xl font-bold text-white">-</p>
+							<p id="uptimeValue" class="text-2xl font-bold text-[var(--text-primary)]">-</p>
 						</div>
-						<div class="bg-gray-900/50 backdrop-blur rounded-xl p-6 border border-gray-800">
-							<p class="text-gray-400 text-sm">Average Latency</p>
-							<p id="avgLatency" class="text-2xl font-bold text-white mt-2">-</p>
+						<div class="bg-[var(--bg-secondary)] backdrop-blur rounded-xl p-6 border border-[var(--border-primary)]">
+							<p class="text-[var(--text-muted)] text-sm">Average Latency</p>
+							<p id="avgLatency" class="text-2xl font-bold text-[var(--text-primary)] mt-2">-</p>
 						</div>
-						<div class="bg-gray-900/50 backdrop-blur rounded-xl p-6 border border-gray-800">
-							<p class="text-gray-400 text-sm">Services Up</p>
-							<p id="servicesUp" class="text-2xl font-bold text-emerald-400 mt-2">-</p>
+						<div class="bg-[var(--bg-secondary)] backdrop-blur rounded-xl p-6 border border-[var(--border-primary)]">
+							<p class="text-[var(--text-muted)] text-sm">Services Up</p>
+							<p id="servicesUp" class="text-2xl font-bold text-[var(--status-up-text)] mt-2">-</p>
 						</div>
-						<div class="bg-gray-900/50 backdrop-blur rounded-xl p-6 border border-gray-800">
-							<p class="text-gray-400 text-sm">Services Down</p>
-							<p id="servicesDown" class="text-2xl font-bold text-red-400 mt-2">-</p>
+						<div class="bg-[var(--bg-secondary)] backdrop-blur rounded-xl p-6 border border-[var(--border-primary)]">
+							<p class="text-[var(--text-muted)] text-sm">Services Down</p>
+							<p id="servicesDown" class="text-2xl font-bold text-[var(--status-down-text)] mt-2">-</p>
 						</div>
 					</div>
 
 					<!-- Last Updated -->
 					<div class="text-right mb-4">
-						<p class="text-gray-500 text-sm">Last updated: <span id="lastUpdated" class="text-gray-400"></span></p>
+						<p class="text-[var(--text-muted)] text-sm">Last updated: <span id="lastUpdated" class="text-[var(--text-muted)]"></span></p>
 					</div>
 
 					<!-- Services List -->
@@ -96,9 +118,12 @@
 				</main>
 
 				<!-- Footer -->
-				<footer class="mt-16 py-8 border-t border-gray-800">
-					<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-gray-500">
-						<p>Powered by <a class="text-emerald-600" href="https://github.com/Rabbit-Company/UptimeMonitor-Server" target="_blank">UptimeMonitor</a></p>
+				<footer class="mt-16 py-8 border-t border-[var(--border-primary)]">
+					<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-[var(--text-muted)]">
+						<p>
+							Powered by
+							<a class="text-[var(--accent-secondary)]" href="https://github.com/Rabbit-Company/UptimeMonitor-Server" target="_blank">UptimeMonitor</a>
+						</p>
 					</div>
 				</footer>
 			</div>
@@ -108,15 +133,15 @@
 		<div id="historyModal" class="fixed inset-0 z-50 hidden">
 			<div class="modal-backdrop fixed inset-0 bg-black/50"></div>
 			<div class="relative flex items-center justify-center min-h-screen p-4">
-				<div class="relative bg-gray-900 rounded-2xl shadow-2xl border border-gray-800 w-full max-w-4xl max-h-[90vh] overflow-hidden">
+				<div class="relative bg-[var(--bg-primary)] rounded-2xl shadow-2xl border border-[var(--border-primary)] w-full max-w-4xl max-h-[90vh] overflow-hidden">
 					<!-- Modal Header -->
-					<div class="sticky top-0 bg-gray-900 border-b border-gray-800 px-6 py-4 flex items-center justify-between">
+					<div class="sticky top-0 bg-[var(--bg-primary)] border-b border-[var(--border-primary)] px-6 py-4 flex items-center justify-between">
 						<div>
-							<h2 id="modalTitle" class="text-xl font-semibold text-white"></h2>
-							<p id="modalSubtitle" class="text-sm text-gray-400 mt-1"></p>
+							<h2 id="modalTitle" class="text-xl font-semibold text-[var(--text-primary)]"></h2>
+							<p id="modalSubtitle" class="text-sm text-[var(--text-muted)] mt-1"></p>
 						</div>
-						<button id="modalCloseBtn" class="cursor-pointer p-2 hover:bg-gray-800 rounded-lg transition-colors">
-							<svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<button id="modalCloseBtn" class="cursor-pointer p-2 hover:bg-[var(--bg-hover)] rounded-lg transition-colors">
+							<svg class="w-5 h-5 text-[var(--text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
 							</svg>
 						</button>
@@ -129,37 +154,37 @@
 							<div class="flex flex-wrap gap-2 mb-6">
 								<button
 									data-modal-period="1h"
-									class="modal-period-btn cursor-pointer px-4 py-2 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors"
+									class="modal-period-btn cursor-pointer px-4 py-2 text-sm rounded-lg bg-[var(--bg-hover)] hover:bg-[var(--bg-tertiary)] text-[var(--text-muted)] transition-colors"
 								>
 									1h
 								</button>
 								<button
 									data-modal-period="24h"
-									class="modal-period-btn cursor-pointer px-4 py-2 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors"
+									class="modal-period-btn cursor-pointer px-4 py-2 text-sm rounded-lg bg-[var(--bg-hover)] hover:bg-[var(--bg-tertiary)] text-[var(--text-muted)] transition-colors"
 								>
 									24h
 								</button>
 								<button
 									data-modal-period="7d"
-									class="modal-period-btn cursor-pointer px-4 py-2 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors"
+									class="modal-period-btn cursor-pointer px-4 py-2 text-sm rounded-lg bg-[var(--bg-hover)] hover:bg-[var(--bg-tertiary)] text-[var(--text-muted)] transition-colors"
 								>
 									7d
 								</button>
 								<button
 									data-modal-period="30d"
-									class="modal-period-btn cursor-pointer px-4 py-2 text-sm rounded-lg bg-gray-700 text-gray-300 transition-colors"
+									class="modal-period-btn cursor-pointer px-4 py-2 text-sm rounded-lg bg-[var(--bg-tertiary)] text-[var(--text-muted)] transition-colors"
 								>
 									30d
 								</button>
 								<button
 									data-modal-period="90d"
-									class="modal-period-btn cursor-pointer px-4 py-2 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors"
+									class="modal-period-btn cursor-pointer px-4 py-2 text-sm rounded-lg bg-[var(--bg-hover)] hover:bg-[var(--bg-tertiary)] text-[var(--text-muted)] transition-colors"
 								>
 									90d
 								</button>
 								<button
 									data-modal-period="365d"
-									class="modal-period-btn cursor-pointer px-4 py-2 text-sm rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors"
+									class="modal-period-btn cursor-pointer px-4 py-2 text-sm rounded-lg bg-[var(--bg-hover)] hover:bg-[var(--bg-tertiary)] text-[var(--text-muted)] transition-colors"
 								>
 									365d
 								</button>
@@ -168,8 +193,8 @@
 							<!-- Charts -->
 							<div class="space-y-6">
 								<div>
-									<h3 class="text-lg font-medium text-white mb-3">Uptime History</h3>
-									<div class="bg-gray-800/50 rounded-lg p-4">
+									<h3 class="text-lg font-medium text-[var(--text-primary)] mb-3">Uptime History</h3>
+									<div class="bg-[var(--bg-tertiary)] rounded-lg p-4">
 										<div class="chart-container-modal">
 											<canvas id="modal-uptime-chart"></canvas>
 										</div>
@@ -177,8 +202,8 @@
 								</div>
 
 								<div>
-									<h3 class="text-lg font-medium text-white mb-3">Response Time History</h3>
-									<div class="bg-gray-800/50 rounded-lg p-4">
+									<h3 class="text-lg font-medium text-[var(--text-primary)] mb-3">Response Time History</h3>
+									<div class="bg-[var(--bg-tertiary)] rounded-lg p-4">
 										<div class="chart-container-modal">
 											<canvas id="modal-latency-chart"></canvas>
 										</div>
@@ -187,8 +212,8 @@
 
 								<!-- Custom Metric 1 Chart (dynamically shown) -->
 								<div id="custom1-chart-container" class="hidden">
-									<h3 id="custom1-chart-title" class="text-lg font-medium text-white mb-3"></h3>
-									<div class="bg-gray-800/50 rounded-lg p-4">
+									<h3 id="custom1-chart-title" class="text-lg font-medium text-[var(--text-primary)] mb-3"></h3>
+									<div class="bg-[var(--bg-tertiary)] rounded-lg p-4">
 										<div class="chart-container-modal">
 											<canvas id="modal-custom1-chart"></canvas>
 										</div>
@@ -197,8 +222,8 @@
 
 								<!-- Custom Metric 2 Chart (dynamically shown) -->
 								<div id="custom2-chart-container" class="hidden">
-									<h3 id="custom2-chart-title" class="text-lg font-medium text-white mb-3"></h3>
-									<div class="bg-gray-800/50 rounded-lg p-4">
+									<h3 id="custom2-chart-title" class="text-lg font-medium text-[var(--text-primary)] mb-3"></h3>
+									<div class="bg-[var(--bg-tertiary)] rounded-lg p-4">
 										<div class="chart-container-modal">
 											<canvas id="modal-custom2-chart"></canvas>
 										</div>
@@ -207,8 +232,8 @@
 
 								<!-- Custom Metric 3 Chart (dynamically shown) -->
 								<div id="custom3-chart-container" class="hidden">
-									<h3 id="custom3-chart-title" class="text-lg font-medium text-white mb-3"></h3>
-									<div class="bg-gray-800/50 rounded-lg p-4">
+									<h3 id="custom3-chart-title" class="text-lg font-medium text-[var(--text-primary)] mb-3"></h3>
+									<div class="bg-[var(--bg-tertiary)] rounded-lg p-4">
 										<div class="chart-container-modal">
 											<canvas id="modal-custom3-chart"></canvas>
 										</div>

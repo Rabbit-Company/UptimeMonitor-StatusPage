@@ -12,6 +12,8 @@ services:
       - UPTIME_PRECISION=3
       - LATENCY_PRECISION=0
       - DEFAULT_PERIOD=24h
+      # Available themes: midnight, ocean, forest, sunset, lavender, monochrome, cyberpunk, nord, dracula
+      - DEFAULT_THEME=midnight
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/health"]
       interval: 30s

@@ -25,6 +25,7 @@ import {
 	aggregateTo10MinIntervals,
 	getDateTime,
 } from "./utils";
+import { getCurrentTheme, type Theme } from "./themes";
 
 // Register Chart.js components
 Chart.register(
@@ -41,6 +42,13 @@ Chart.register(
 	Filler,
 	zoomPlugin,
 );
+
+/**
+ * Get current theme colors for charts
+ */
+function getChartColors(): Theme["colors"] {
+	return getCurrentTheme().colors;
+}
 
 /**
  * Common chart options for zoom plugin
@@ -70,23 +78,28 @@ const zoomOptions = {
 };
 
 /**
- * Common scale options
+ * Get common scale options with theme colors
  */
-const xScaleOptions = {
-	ticks: {
-		color: "#9CA3AF",
-		maxRotation: 45,
-		minRotation: 45,
-	},
-	grid: {
-		display: false,
-	},
-};
+function getXScaleOptions() {
+	const colors = getChartColors();
+	return {
+		ticks: {
+			color: colors.textMuted,
+			maxRotation: 45,
+			minRotation: 45,
+		},
+		grid: {
+			display: false,
+		},
+	};
+}
 
 /**
  * Create uptime chart
  */
 function createUptimeChart(ctx: CanvasRenderingContext2D, labels: string[], uptimeData: number[]): Chart {
+	const colors = getChartColors();
+
 	return new Chart(ctx, {
 		type: "bar",
 		data: {
@@ -95,8 +108,14 @@ function createUptimeChart(ctx: CanvasRenderingContext2D, labels: string[], upti
 				{
 					label: "Uptime %",
 					data: uptimeData,
-					backgroundColor: uptimeData.map((v) => (v >= 99 ? "rgba(16, 185, 129, 0.8)" : v >= 95 ? "rgba(251, 191, 36, 0.8)" : "rgba(239, 68, 68, 0.8)")),
-					borderColor: uptimeData.map((v) => (v >= 99 ? "rgba(16, 185, 129, 1)" : v >= 95 ? "rgba(251, 191, 36, 1)" : "rgba(239, 68, 68, 1)")),
+					backgroundColor: uptimeData.map((v) => (v >= 99 ? colors.chartUptime : v >= 95 ? colors.chartUptimeWarning : colors.chartUptimeCritical)),
+					borderColor: uptimeData.map((v) =>
+						v >= 99
+							? colors.chartUptime.replace("0.8", "1")
+							: v >= 95
+								? colors.chartUptimeWarning.replace("0.8", "1")
+								: colors.chartUptimeCritical.replace("0.8", "1"),
+					),
 					borderWidth: 1,
 				},
 			],
@@ -129,13 +148,13 @@ function createUptimeChart(ctx: CanvasRenderingContext2D, labels: string[], upti
 						callback: function (value) {
 							return value + "%";
 						},
-						color: "#9CA3AF",
+						color: colors.textMuted,
 					},
 					grid: {
-						color: "rgba(156, 163, 175, 0.1)",
+						color: colors.textMuted + "1A", // 10% opacity
 					},
 				},
-				x: xScaleOptions,
+				x: getXScaleOptions(),
 			},
 		},
 	});
@@ -151,6 +170,8 @@ function createLatencyChart(
 	latencyAvgData: (number | null)[],
 	latencyMaxData: (number | null)[],
 ): Chart {
+	const colors = getChartColors();
+
 	return new Chart(ctx, {
 		type: "line",
 		data: {
@@ -159,7 +180,7 @@ function createLatencyChart(
 				{
 					label: "Min Latency",
 					data: latencyMinData,
-					borderColor: "rgba(16, 185, 129, 0.5)",
+					borderColor: colors.chartLatencyMin,
 					borderDash: [5, 5],
 					tension: 0.3,
 					fill: false,
@@ -168,8 +189,8 @@ function createLatencyChart(
 				{
 					label: "Avg Latency",
 					data: latencyAvgData,
-					borderColor: "rgba(59, 130, 246, 1)",
-					backgroundColor: "rgba(59, 130, 246, 0.1)",
+					borderColor: colors.chartLatency,
+					backgroundColor: colors.chartLatency.replace("1)", "0.1)"),
 					tension: 0.3,
 					fill: false,
 					pointRadius: 0,
@@ -177,7 +198,7 @@ function createLatencyChart(
 				{
 					label: "Max Latency",
 					data: latencyMaxData,
-					borderColor: "rgba(239, 68, 68, 0.5)",
+					borderColor: colors.chartLatencyMax,
 					borderDash: [5, 5],
 					tension: 0.3,
 					fill: false,
@@ -195,7 +216,7 @@ function createLatencyChart(
 			plugins: {
 				legend: {
 					labels: {
-						color: "#9CA3AF",
+						color: colors.textMuted,
 						usePointStyle: true,
 						pointStyle: "line",
 					},
@@ -207,7 +228,7 @@ function createLatencyChart(
 						label: function (context) {
 							const value = context.parsed.y;
 							if (value === null || value === undefined) return "";
-							return `${context.dataset.label}: ${value.toFixed(LATENCY_PRECISION)}ms`;
+							return `${context.dataset.label}: ${value.toFixed(UPTIME_PRECISION)}ms`;
 						},
 					},
 				},
@@ -220,13 +241,13 @@ function createLatencyChart(
 						callback: function (value) {
 							return value + "ms";
 						},
-						color: "#9CA3AF",
+						color: colors.textMuted,
 					},
 					grid: {
-						color: "rgba(156, 163, 175, 0.1)",
+						color: colors.textMuted + "1A",
 					},
 				},
-				x: xScaleOptions,
+				x: getXScaleOptions(),
 			},
 		},
 	});
@@ -242,8 +263,11 @@ export function createCustomMetricChart(
 	avgData: (number | null)[],
 	maxData: (number | null)[],
 	config: CustomMetricConfig,
+	chartColorKey: "chartCustom1" | "chartCustom2" | "chartCustom3",
 ): Chart {
+	const colors = getChartColors();
 	const unit = config.unit || "";
+	const mainColor = colors[chartColorKey];
 
 	return new Chart(ctx, {
 		type: "line",
@@ -253,7 +277,7 @@ export function createCustomMetricChart(
 				{
 					label: `Min ${config.name}`,
 					data: minData,
-					borderColor: "rgba(16, 185, 129, 0.5)",
+					borderColor: colors.chartLatencyMin,
 					borderDash: [5, 5],
 					tension: 0.3,
 					fill: false,
@@ -262,8 +286,8 @@ export function createCustomMetricChart(
 				{
 					label: `Avg ${config.name}`,
 					data: avgData,
-					borderColor: "rgba(168, 85, 247, 1)",
-					backgroundColor: "rgba(168, 85, 247, 0.1)",
+					borderColor: mainColor,
+					backgroundColor: mainColor.replace("1)", "0.1)"),
 					tension: 0.3,
 					fill: false,
 					pointRadius: 0,
@@ -271,7 +295,7 @@ export function createCustomMetricChart(
 				{
 					label: `Max ${config.name}`,
 					data: maxData,
-					borderColor: "rgba(239, 68, 68, 0.5)",
+					borderColor: colors.chartLatencyMax,
 					borderDash: [5, 5],
 					tension: 0.3,
 					fill: false,
@@ -289,7 +313,7 @@ export function createCustomMetricChart(
 			plugins: {
 				legend: {
 					labels: {
-						color: "#9CA3AF",
+						color: colors.textMuted,
 						usePointStyle: true,
 						pointStyle: "line",
 					},
@@ -314,13 +338,13 @@ export function createCustomMetricChart(
 						callback: function (value) {
 							return `${value} ${unit}`;
 						},
-						color: "#9CA3AF",
+						color: colors.textMuted,
 					},
 					grid: {
-						color: "rgba(156, 163, 175, 0.1)",
+						color: colors.textMuted + "1A",
 					},
 				},
-				x: xScaleOptions,
+				x: getXScaleOptions(),
 			},
 		},
 	});
@@ -381,7 +405,6 @@ export async function loadGroupHistory(item: StatusItem, period: Period): Promis
 
 	const historyData: GroupHistoryResponse = await response.json();
 
-	// Filter and process data
 	const cutoffTime = getTimeRangeForPeriod(period);
 	let filteredData = historyData.data.filter((d) => parseTimestamp(d.timestamp).getTime() >= cutoffTime);
 
@@ -391,28 +414,23 @@ export async function loadGroupHistory(item: StatusItem, period: Period): Promis
 
 	const filledData = fillMissingIntervals(filteredData, period, historyType);
 
-	// Process data for charts
 	const labels = filledData.map((d) => formatLabelForPeriod(d.timestamp, period));
 	const uptimeData = filledData.map((d) => d.uptime);
 	const latencyMinData = filledData.map((d) => d.latency_min ?? null);
 	const latencyMaxData = filledData.map((d) => d.latency_max ?? null);
 	const latencyAvgData = filledData.map((d) => d.latency_avg ?? null);
 
-	// Destroy existing charts
 	appState.destroyAllCharts();
 
-	// Create uptime chart
 	const uptimeCtx = (document.getElementById("modal-uptime-chart") as HTMLCanvasElement).getContext("2d")!;
 	appState.modalCharts.uptime = createUptimeChart(uptimeCtx, labels, uptimeData);
 
-	// Create latency chart if data exists
 	const hasLatencyData = latencyAvgData.some((v) => v !== null);
 	if (hasLatencyData) {
 		const latencyCtx = (document.getElementById("modal-latency-chart") as HTMLCanvasElement).getContext("2d")!;
 		appState.modalCharts.latency = createLatencyChart(latencyCtx, labels, latencyMinData, latencyAvgData, latencyMaxData);
 	}
 
-	// Hide custom metric containers for groups
 	document.getElementById("custom1-chart-container")!.classList.add("hidden");
 	document.getElementById("custom2-chart-container")!.classList.add("hidden");
 	document.getElementById("custom3-chart-container")!.classList.add("hidden");
@@ -445,7 +463,6 @@ export async function loadMonitorHistory(item: StatusItem, period: Period): Prom
 
 	const historyData: MonitorHistoryResponse = await response.json();
 
-	// Filter and process data
 	const cutoffTime = getTimeRangeForPeriod(period);
 	let filteredData = historyData.data.filter((d) => parseTimestamp(d.timestamp).getTime() >= cutoffTime);
 
@@ -455,30 +472,25 @@ export async function loadMonitorHistory(item: StatusItem, period: Period): Prom
 
 	const filledData = fillMissingIntervals(filteredData, period, historyType);
 
-	// Process data for charts
 	const labels = filledData.map((d) => formatLabelForPeriod(d.timestamp, period));
 	const uptimeData = filledData.map((d) => d.uptime);
 	const latencyMinData = filledData.map((d) => d.latency_min ?? null);
 	const latencyMaxData = filledData.map((d) => d.latency_max ?? null);
 	const latencyAvgData = filledData.map((d) => d.latency_avg ?? null);
 
-	// Destroy existing charts
 	appState.destroyAllCharts();
 
-	// Create uptime chart
 	const uptimeCtx = (document.getElementById("modal-uptime-chart") as HTMLCanvasElement).getContext("2d")!;
 	appState.modalCharts.uptime = createUptimeChart(uptimeCtx, labels, uptimeData);
 
-	// Create latency chart
 	const latencyCtx = (document.getElementById("modal-latency-chart") as HTMLCanvasElement).getContext("2d")!;
 	appState.modalCharts.latency = createLatencyChart(latencyCtx, labels, latencyMinData, latencyAvgData, latencyMaxData);
 
-	// Create custom metric charts if available
 	const customMetrics = historyData.customMetrics;
 
-	createCustomMetricChartIfAvailable("custom1", customMetrics?.custom1, filledData);
-	createCustomMetricChartIfAvailable("custom2", customMetrics?.custom2, filledData);
-	createCustomMetricChartIfAvailable("custom3", customMetrics?.custom3, filledData);
+	createCustomMetricChartIfAvailable("custom1", customMetrics?.custom1, filledData, "chartCustom1");
+	createCustomMetricChartIfAvailable("custom2", customMetrics?.custom2, filledData, "chartCustom2");
+	createCustomMetricChartIfAvailable("custom3", customMetrics?.custom3, filledData, "chartCustom3");
 
 	setupChartSync();
 	updateModalStats(item);
@@ -491,6 +503,7 @@ function createCustomMetricChartIfAvailable(
 	metricKey: "custom1" | "custom2" | "custom3",
 	config: CustomMetricConfig | undefined,
 	filledData: HistoryDataPoint[],
+	chartColorKey: "chartCustom1" | "chartCustom2" | "chartCustom3",
 ): void {
 	const container = document.getElementById(`${metricKey}-chart-container`)!;
 	const labels = filledData.map((d) => formatLabelForPeriod(d.timestamp, appState.currentModalPeriod));
@@ -508,7 +521,7 @@ function createCustomMetricChartIfAvailable(
 		container.classList.remove("hidden");
 
 		const ctx = (document.getElementById(`modal-${metricKey}-chart`) as HTMLCanvasElement).getContext("2d")!;
-		appState.modalCharts[metricKey] = createCustomMetricChart(ctx, labels, minData, avgData, maxData, config);
+		appState.modalCharts[metricKey] = createCustomMetricChart(ctx, labels, minData, avgData, maxData, config, chartColorKey);
 	} else {
 		container.classList.add("hidden");
 	}
@@ -518,26 +531,34 @@ function createCustomMetricChartIfAvailable(
  * Update modal stats display
  */
 function updateModalStats(item: StatusItem): void {
+	const colors = getChartColors();
+
+	const getUptimeClass = (value: number) => {
+		if (value > 99) return `color: ${colors.statusUpText}`;
+		if (value > 95) return `color: ${colors.statusDegradedText}`;
+		return `color: ${colors.statusDownText}`;
+	};
+
 	const statsHtml = `
-		<div class="bg-gray-800/50 rounded-lg p-4">
-			<p class="text-xs text-gray-400 mb-1">Last Check</p>
-			<p class="text-sm text-gray-300">${item.lastCheck ? getDateTime(item.lastCheck) : "-"}</p>
+		<div class="bg-[var(--bg-tertiary)] rounded-lg p-4">
+			<p class="text-xs text-[var(--text-muted)] mb-1">Last Check</p>
+			<p class="text-sm text-[var(--text-muted)]">${item.lastCheck ? getDateTime(item.lastCheck) : "-"}</p>
 		</div>
-		<div class="bg-gray-800/50 rounded-lg p-4">
-			<p class="text-xs text-gray-400 mb-1">1 Day Uptime</p>
-			<p class="text-sm font-semibold ${(item.uptime24h || 0) > 99 ? "text-emerald-400" : (item.uptime24h || 0) > 95 ? "text-yellow-400" : "text-red-400"}">
+		<div class="bg-[var(--bg-tertiary)] rounded-lg p-4">
+			<p class="text-xs text-[var(--text-muted)] mb-1">1 Day Uptime</p>
+			<p class="text-sm font-semibold" style="${getUptimeClass(item.uptime24h || 0)}">
 				${item.uptime24h?.toFixed(UPTIME_PRECISION) || "-"}%
 			</p>
 		</div>
-		<div class="bg-gray-800/50 rounded-lg p-4">
-			<p class="text-xs text-gray-400 mb-1">30 Day Uptime</p>
-			<p class="text-sm font-semibold ${(item.uptime30d || 0) > 99 ? "text-emerald-400" : (item.uptime30d || 0) > 95 ? "text-yellow-400" : "text-red-400"}">
+		<div class="bg-[var(--bg-tertiary)] rounded-lg p-4">
+			<p class="text-xs text-[var(--text-muted)] mb-1">30 Day Uptime</p>
+			<p class="text-sm font-semibold" style="${getUptimeClass(item.uptime30d || 0)}">
 				${item.uptime30d?.toFixed(UPTIME_PRECISION) || "-"}%
 			</p>
 		</div>
-		<div class="bg-gray-800/50 rounded-lg p-4">
-			<p class="text-xs text-gray-400 mb-1">365 Day Uptime</p>
-			<p class="text-sm font-semibold ${(item.uptime365d || 0) > 99 ? "text-emerald-400" : (item.uptime365d || 0) > 95 ? "text-yellow-400" : "text-red-400"}">
+		<div class="bg-[var(--bg-tertiary)] rounded-lg p-4">
+			<p class="text-xs text-[var(--text-muted)] mb-1">365 Day Uptime</p>
+			<p class="text-sm font-semibold" style="${getUptimeClass(item.uptime365d || 0)}">
 				${item.uptime365d?.toFixed(UPTIME_PRECISION) || "-"}%
 			</p>
 		</div>
