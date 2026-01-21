@@ -12,7 +12,23 @@ declare global {
 
 // Valid values
 const validPeriods: Period[] = ["1h", "24h", "7d", "30d", "90d", "365d"];
-const validThemes = ["midnight", "ocean", "forest", "sunset", "lavender", "monochrome", "cyberpunk", "nord", "dracula"] as const;
+const validThemes = [
+	"midnight",
+	"oled",
+	"monochrome",
+	"neonmono",
+	"cyberpunk",
+	"ocean",
+	"forest",
+	"sunset",
+	"lavender",
+	"fuchsia",
+	"rose",
+	"sakura",
+	"tokyonight",
+	"dracula",
+	"nord",
+] as const;
 
 export type ConfigThemeName = (typeof validThemes)[number];
 

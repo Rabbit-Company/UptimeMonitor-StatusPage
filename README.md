@@ -7,7 +7,7 @@ A modern, real-time status page frontend for [UptimeMonitor-Server](https://gith
 - 🔄 **Real-Time Updates** - WebSocket connection for instant status changes without page refresh
 - 📈 **Interactive Charts** - Zoom and pan through uptime and latency history with Chart.js
 - 📱 **Responsive Design** - Optimized for desktop, tablet, and mobile devices
-- 🎨 **Multiple Themes** - 9 beautiful themes to choose from (Midnight, Ocean, Forest, Sunset, Lavender, Monochrome, Cyberpunk, Nord, Dracula)
+- 🎨 **Multiple Themes** - 15 beautiful themes to choose from (Midnight, OLED, Ocean, Forest, Sunset, Lavender, Monochrome, Neon Mono, Cyberpunk, Nord, Dracula, Tokyo Night, Fuchsia, Rose, Sakura)
 - 📊 **Custom Metrics** - Display up to 3 custom metrics per monitor (e.g., player count, TPS, memory)
 - 🔔 **Live Notifications** - Toast notifications for status changes
 - 📁 **Group Support** - Hierarchical organization with expandable service groups
@@ -28,17 +28,23 @@ The status page displays:
 
 ## 🎨 Available Themes
 
-| Theme          | Description                                 |
-| -------------- | ------------------------------------------- |
-| **Midnight**   | Dark theme with emerald accents (default)   |
-| **Ocean**      | Deep blue with cyan accents                 |
-| **Forest**     | Dark green with lime accents                |
-| **Sunset**     | Warm orange/red tones                       |
-| **Lavender**   | Purple/violet tones                         |
-| **Monochrome** | Pure grayscale                              |
-| **Cyberpunk**  | Neon pink/cyan on dark                      |
-| **Nord**       | Arctic north-bluish color palette           |
-| **Dracula**    | Dark purple theme with vibrant neon accents |
+| Theme           | Description                                       |
+| --------------- | ------------------------------------------------- |
+| **Midnight**    | Dark theme with emerald accents (default)         |
+| **OLED**        | Pure black theme optimized for OLED displays      |
+| **Monochrome**  | Pure grayscale                                    |
+| **Neon Mono**   | High-contrast monochrome with neon highlights     |
+| **Cyberpunk**   | Neon pink/cyan on dark                            |
+| **Ocean**       | Deep blue with cyan accents                       |
+| **Forest**      | Dark green with lime accents                      |
+| **Sunset**      | Warm orange/red tones                             |
+| **Lavender**    | Purple/violet tones                               |
+| **Fuchsia**     | Vibrant magenta-focused color palette             |
+| **Rose**        | Soft rose and pink hues                           |
+| **Sakura**      | Light pink cherry-blossom inspired theme          |
+| **Tokyo Night** | Popular VS Code theme with deep blue/purple tones |
+| **Dracula**     | Dark purple theme with vibrant neon accents       |
+| **Nord**        | Arctic north-bluish color palette                 |
 
 Users can switch themes at any time using the theme selector in the header. The selected theme is persisted in localStorage.
 
@@ -57,7 +63,7 @@ globalThis.UPTIME_PRECISION = parseInt("3") || 3;
 globalThis.LATENCY_PRECISION = parseInt("2") || 0;
 // Available options: 1h, 24h, 7d, 30d, 90d, 365d
 globalThis.DEFAULT_PERIOD = "24h";
-// Available themes: midnight, ocean, forest, sunset, lavender, monochrome, cyberpunk, nord, dracula
+// Available themes: midnight, oled, ocean, forest, sunset, lavender, monochrome, neonmono, cyberpunk, nord, dracula, tokyonight, fuchsia, rose, sakura
 globalThis.DEFAULT_THEME = "midnight";
 ```
 
@@ -79,7 +85,7 @@ globalThis.STATUS_PAGE_SLUG = "status";
 globalThis.UPTIME_PRECISION = parseInt("2") || 3;
 globalThis.LATENCY_PRECISION = parseInt("2") || 0;
 globalThis.DEFAULT_PERIOD = "24h";
-globalThis.DEFAULT_THEME = "ocean";
+globalThis.DEFAULT_THEME = "tokyonight";
 ```
 
 ## 📡 WebSocket Connection
@@ -207,7 +213,7 @@ services:
       - UPTIME_PRECISION=3
       - LATENCY_PRECISION=0
       - DEFAULT_PERIOD=24h
-      # Available themes: midnight, ocean, forest, sunset, lavender, monochrome, cyberpunk, nord, dracula
+      # Available themes: midnight, oled, ocean, forest, sunset, lavender, monochrome, neonmono, cyberpunk, nord, dracula, tokyonight, fuchsia, rose, sakura
       - DEFAULT_THEME=midnight
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/health"]
