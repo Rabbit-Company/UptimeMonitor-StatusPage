@@ -120,13 +120,13 @@ function handlePulseUpdate(message: WSPulseMessage): void {
 		monitor.latency = latency;
 		monitor.lastCheck = timestamp;
 
-		if (custom1 !== null && monitor.custom1) {
+		if (custom1 !== undefined && monitor.custom1) {
 			monitor.custom1.value = custom1;
 		}
-		if (custom2 !== null && monitor.custom2) {
+		if (custom2 !== undefined && monitor.custom2) {
 			monitor.custom2.value = custom2;
 		}
-		if (custom3 !== null && monitor.custom3) {
+		if (custom3 !== undefined && monitor.custom3) {
 			monitor.custom3.value = custom3;
 		}
 

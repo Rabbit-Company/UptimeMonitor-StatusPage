@@ -108,9 +108,9 @@ export interface WSPulseMessage {
 		status: "up";
 		latency: number;
 		timestamp: string;
-		custom1: number | null;
-		custom2: number | null;
-		custom3: number | null;
+		custom1?: number;
+		custom2?: number;
+		custom3?: number;
 	};
 	timestamp: string;
 }
