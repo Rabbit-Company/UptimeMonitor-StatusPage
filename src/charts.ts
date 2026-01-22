@@ -228,7 +228,7 @@ function createLatencyChart(
 						label: function (context) {
 							const value = context.parsed.y;
 							if (value === null || value === undefined) return "";
-							return `${context.dataset.label}: ${value.toFixed(UPTIME_PRECISION)}ms`;
+							return `${context.dataset.label}: ${value.toFixed(LATENCY_PRECISION)}ms`;
 						},
 					},
 				},
