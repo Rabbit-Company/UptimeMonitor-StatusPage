@@ -1,7 +1,7 @@
 {
 	"name": "uptimemonitor-statuspage",
 	"module": "src/index.ts",
-	"version": "0.2.6",
+	"version": "0.2.7",
 	"type": "module",
 	"private": true,
 	"scripts": {
@@ -17,6 +17,7 @@
 		"typescript": "^5.9.3"
 	},
 	"dependencies": {
+		"@rabbit-company/blake2b": "^2.1.0",
 		"chart.js": "^4.5.1",
 		"chartjs-plugin-zoom": "^2.2.0"
 	}

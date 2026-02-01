@@ -4,6 +4,7 @@ import { appState } from "./state";
 import { showNotification } from "./notifications";
 import { updateMonitorUI, updateParentGroups, updateSummaryStats, updateOverallStatus } from "./ui";
 import { getDateTime } from "./utils";
+import { getStoredPassword } from "./auth";
 
 type ConnectionStatus = "connected" | "disconnected" | "reconnecting" | "error" | "failed";
 
@@ -59,7 +60,17 @@ function handleWSOpen(): void {
 
 	// Subscribe to the status page
 	if (appState.ws && appState.ws.readyState === WebSocket.OPEN) {
-		appState.ws.send(JSON.stringify({ action: "subscribe", slug: STATUS_PAGE_SLUG }));
+		const subscribeMessage: { action: string; slug: string; password?: string } = {
+			action: "subscribe",
+			slug: STATUS_PAGE_SLUG,
+		};
+
+		const password = getStoredPassword();
+		if (password) {
+			subscribeMessage.password = password;
+		}
+
+		appState.ws.send(JSON.stringify(subscribeMessage));
 	}
 
 	updateConnectionStatus("connected");

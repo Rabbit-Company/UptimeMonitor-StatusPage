@@ -55,6 +55,6 @@ export const DEFAULT_PERIOD = getValidatedDefaultPeriod();
 export const DEFAULT_THEME = getValidatedDefaultTheme();
 
 // WebSocket configuration
-export const WS_MAX_RECONNECT_ATTEMPTS = 10;
+export const WS_MAX_RECONNECT_ATTEMPTS = 10000;
 export const WS_RECONNECT_BASE_DELAY = 1000; // 1 second
 export const WS_RECONNECT_MAX_DELAY = 30000; // 30 seconds

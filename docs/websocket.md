@@ -14,19 +14,19 @@ If the connection drops, the status page automatically reconnects:
 
 - **Base delay**: 1 second
 - **Max delay**: 30 seconds
-- **Max attempts**: 10
+- **Max attempts**: 10000
 - **Strategy**: Exponential backoff with jitter
 
 ### Connection Indicator
 
 The header displays connection status:
 
-| Status | Indicator | Meaning |
-|--------|-----------|---------|
-| **Live** | 🟢 Green | Connected and receiving updates |
-| **Reconnecting** | 🟡 Yellow (pulsing) | Connection lost, retrying |
-| **Disconnected** | 🔴 Red | Not connected |
-| **Failed** | 🔴 Red | Max reconnection attempts reached |
+| Status           | Indicator           | Meaning                           |
+| ---------------- | ------------------- | --------------------------------- |
+| **Live**         | 🟢 Green            | Connected and receiving updates   |
+| **Reconnecting** | 🟡 Yellow (pulsing) | Connection lost, retrying         |
+| **Disconnected** | 🔴 Red              | Not connected                     |
+| **Failed**       | 🔴 Red              | Max reconnection attempts reached |
 
 ## WebSocket Protocol
 
@@ -45,8 +45,8 @@ After connecting, the client subscribes to a specific status page:
 
 ```json
 {
-  "action": "subscribe",
-  "slug": "status"
+	"action": "subscribe",
+	"slug": "status"
 }
 ```
 
@@ -54,10 +54,10 @@ After connecting, the client subscribes to a specific status page:
 
 ```json
 {
-  "action": "subscribed",
-  "slug": "status",
-  "message": "Subscription successful",
-  "timestamp": "2025-01-15T10:30:00.000Z"
+	"action": "subscribed",
+	"slug": "status",
+	"message": "Subscription successful",
+	"timestamp": "2025-01-15T10:30:00.000Z"
 }
 ```
 
@@ -69,21 +69,22 @@ Sent when a monitor receives a pulse:
 
 ```json
 {
-  "action": "pulse",
-  "data": {
-    "slug": "status",
-    "monitorId": "api-prod",
-    "status": "up",
-    "latency": 125,
-    "timestamp": "2025-01-15T10:30:00.000Z",
-    "custom1": 42,
-    "custom2": 19.8
-  },
-  "timestamp": "2025-01-15T10:30:00.000Z"
+	"action": "pulse",
+	"data": {
+		"slug": "status",
+		"monitorId": "api-prod",
+		"status": "up",
+		"latency": 125,
+		"timestamp": "2025-01-15T10:30:00.000Z",
+		"custom1": 42,
+		"custom2": 19.8
+	},
+	"timestamp": "2025-01-15T10:30:00.000Z"
 }
 ```
 
 **UI Updates**:
+
 - Monitor status indicator updates
 - Latency value refreshes
 - Custom metrics update (if present)
@@ -96,17 +97,18 @@ Sent when a monitor is marked as down:
 
 ```json
 {
-  "action": "monitor-down",
-  "data": {
-    "slug": "status",
-    "monitorId": "api-prod",
-    "downtime": 60000
-  },
-  "timestamp": "2025-01-15T10:30:00.000Z"
+	"action": "monitor-down",
+	"data": {
+		"slug": "status",
+		"monitorId": "api-prod",
+		"downtime": 60000
+	},
+	"timestamp": "2025-01-15T10:30:00.000Z"
 }
 ```
 
 **UI Updates**:
+
 - Monitor status changes to red
 - Overall status may change to "Degraded" or "Down"
 - Toast notification appears: "Production API is down"
@@ -118,14 +120,14 @@ Sent when a monitor remains down after consecutive checks:
 
 ```json
 {
-  "action": "monitor-still-down",
-  "data": {
-    "slug": "status",
-    "monitorId": "api-prod",
-    "consecutiveDownCount": 5,
-    "downtime": 300000
-  },
-  "timestamp": "2025-01-15T10:35:00.000Z"
+	"action": "monitor-still-down",
+	"data": {
+		"slug": "status",
+		"monitorId": "api-prod",
+		"consecutiveDownCount": 5,
+		"downtime": 300000
+	},
+	"timestamp": "2025-01-15T10:35:00.000Z"
 }
 ```
 
@@ -135,18 +137,19 @@ Sent when a down monitor comes back up:
 
 ```json
 {
-  "action": "monitor-recovered",
-  "data": {
-    "slug": "status",
-    "monitorId": "api-prod",
-    "previousConsecutiveDownCount": 5,
-    "downtime": 300000
-  },
-  "timestamp": "2025-01-15T10:35:00.000Z"
+	"action": "monitor-recovered",
+	"data": {
+		"slug": "status",
+		"monitorId": "api-prod",
+		"previousConsecutiveDownCount": 5,
+		"downtime": 300000
+	},
+	"timestamp": "2025-01-15T10:35:00.000Z"
 }
 ```
 
 **UI Updates**:
+
 - Monitor status changes to green
 - Overall status recalculates
 - Toast notification appears: "Production API has recovered"
@@ -156,9 +159,9 @@ Sent when a down monitor comes back up:
 
 Status changes trigger toast notifications in the bottom-right corner:
 
-| Event | Type | Example Message |
-|-------|------|-----------------|
-| Monitor down | Error (red) | "Production API is down" |
+| Event             | Type            | Example Message                |
+| ----------------- | --------------- | ------------------------------ |
+| Monitor down      | Error (red)     | "Production API is down"       |
 | Monitor recovered | Success (green) | "Production API has recovered" |
 
 Notifications auto-dismiss after 5 seconds.
@@ -212,12 +215,14 @@ location /ws {
 ### Cloudflare
 
 Enable WebSocket support in your Cloudflare dashboard:
+
 1. Go to Network settings
 2. Enable "WebSockets"
 
 ### AWS ALB
 
 WebSocket is supported by default on Application Load Balancers. Ensure:
+
 - Idle timeout is sufficient (default 60s)
 - Target group uses HTTP/1.1
 

@@ -5,6 +5,7 @@
     "": {
       "name": "uptimemonitor-statuspage",
       "dependencies": {
+        "@rabbit-company/blake2b": "^2.1.0",
         "chart.js": "^4.5.1",
         "chartjs-plugin-zoom": "^2.2.0",
       },
@@ -58,6 +59,8 @@
     "@parcel/watcher-win32-ia32": ["@parcel/watcher-win32-ia32@2.5.4", "", { "os": "win32", "cpu": "ia32" }, "sha512-vQN+KIReG0a2ZDpVv8cgddlf67J8hk1WfZMMP7sMeZmJRSmEax5xNDNWKdgqSe2brOKTQQAs3aCCUal2qBHAyg=="],
 
     "@parcel/watcher-win32-x64": ["@parcel/watcher-win32-x64@2.5.4", "", { "os": "win32", "cpu": "x64" }, "sha512-3A6efb6BOKwyw7yk9ro2vus2YTt2nvcd56AuzxdMiVOxL9umDyN5PKkKfZ/gZ9row41SjVmTVQNWQhaRRGpOKw=="],
+
+    "@rabbit-company/blake2b": ["@rabbit-company/blake2b@2.1.0", "", { "peerDependencies": { "typescript": "^5.0.0" } }, "sha512-dxETRoVBMWmJFuJcfo/zF7QlfYAmT733Efwuok5K4bmb/T/Mq8V2HbwM4+N9OiK727ofRv1BPkWsJs2dvgz1DQ=="],
 
     "@tailwindcss/cli": ["@tailwindcss/cli@4.1.18", "", { "dependencies": { "@parcel/watcher": "^2.5.1", "@tailwindcss/node": "4.1.18", "@tailwindcss/oxide": "4.1.18", "enhanced-resolve": "^5.18.3", "mri": "^1.2.0", "picocolors": "^1.1.1", "tailwindcss": "4.1.18" }, "bin": { "tailwindcss": "dist/index.mjs" } }, "sha512-sMZ+lZbDyxwjD2E0L7oRUjJ01Ffjtme5OtjvvnC+cV4CEDcbqzbp25TCpxHj6kWLU9+DlqJOiNgSOgctC2aZmg=="],
 
