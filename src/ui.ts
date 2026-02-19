@@ -42,12 +42,13 @@ export function updateSummaryStats(): void {
 
 	function countServices(items: StatusItem[]): void {
 		items.forEach((item) => {
-			if (item.children) {
-				countServices(item.children);
-			} else {
+			if (item.type === "monitor") {
 				if (item.status === "up") servicesUp++;
 				else if (item.status === "degraded") servicesDegraded++;
 				else servicesDown++;
+			}
+			if (item.children) {
+				countServices(item.children);
 			}
 		});
 	}
@@ -165,7 +166,11 @@ export function updateParentGroups(monitorId: string): void {
 
 	function updateAncestorGroups(items: StatusItem[]): void {
 		for (const item of items) {
-			if (item.type === "group" && item.children) {
+			if (item.children) {
+				updateAncestorGroups(item.children);
+			}
+
+			if (item.type === "group" && item.children && containsMonitor(item, monitorId)) {
 				updateAncestorGroups(item.children);
 
 				if (containsMonitor(item, monitorId)) {
@@ -223,12 +228,13 @@ export function renderPage(): void {
 
 	function countServices(items: StatusItem[]): void {
 		items.forEach((item) => {
-			if (item.children) {
-				countServices(item.children);
-			} else {
+			if (item.type === "monitor") {
 				if (item.status === "up") servicesUp++;
 				else if (item.status === "degraded") servicesDegraded++;
 				else servicesDown++;
+			}
+			if (item.children) {
+				countServices(item.children);
 			}
 		});
 	}
@@ -372,6 +378,8 @@ function renderGroupHTML(item: StatusItem): string {
 
 function renderMonitorHTML(item: StatusItem): string {
 	const uptimeVal = getUptimeValue(item, appState.selectedUptimePeriod);
+	const hasChildren = item.children && item.children.length > 0;
+	const isExpanded = hasChildren ? appState.isGroupExpanded(item.id) : false;
 
 	let customMetricsHtml = "";
 	let customMetricsMobileHtml = "";
@@ -426,7 +434,7 @@ function renderMonitorHTML(item: StatusItem): string {
 
 	return `
 		<div class="bg-[var(--bg-secondary)] backdrop-blur rounded-xl border border-[var(--border-primary)] overflow-hidden">
-			<div class="px-6 py-4">
+			<div class="px-6 py-4${hasChildren ? " group-header cursor-pointer" : ""}"${hasChildren ? ` data-group-id="${item.id}"` : ""}>
 				<div class="flex items-center justify-between">
 					<div class="flex items-center space-x-3 min-w-0 flex-1">
 						<div data-status-dot="${item.id}" class="w-2 h-2 rounded-full ${getStatusBgClass(item.status)} flex-shrink-0"></div>
@@ -443,12 +451,23 @@ function renderMonitorHTML(item: StatusItem): string {
 							<p data-uptime-desktop="${item.id}" class="text-sm font-semibold ${getUptimeColorClass(uptimeVal!)}">${uptimeVal?.toFixed(UPTIME_PRECISION)}%</p>
 						</div>
 					</div>
-					<div class="ml-4">
+					<div class="flex items-center space-x-2 ml-4">
 						<button data-history-id="${item.id}" data-history-type="monitor" class="cursor-pointer history-btn p-2 hover:bg-[var(--bg-hover)] rounded-lg transition-colors" title="View History">
 							<svg class="w-5 h-5 text-[var(--text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
 							</svg>
 						</button>
+						${
+							hasChildren
+								? `
+						<button data-group-id="${item.id}" class="cursor-pointer group-toggle p-2 hover:bg-[var(--bg-hover)] rounded-lg transition-colors" title="Toggle Children">
+							<svg class="toggle-group-icon w-5 h-5 text-[var(--text-muted)] transform transition-transform ${isExpanded ? "rotate-180" : ""}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+							</svg>
+						</button>
+						`
+								: ""
+						}
 					</div>
 				</div>
 				<div class="sm:hidden flex flex-wrap justify-between gap-2 mt-3">
@@ -463,6 +482,17 @@ function renderMonitorHTML(item: StatusItem): string {
 					</div>
 				</div>
 			</div>
+			${
+				hasChildren
+					? `
+			<div id="group-${item.id}" class="${isExpanded ? "" : "hidden"}">
+					<div class="px-6 py-4 border-t border-[var(--border-primary)] space-y-4">
+							${item.children?.map((child) => renderServiceItem(child, 1).outerHTML).join("") || ""}
+					</div>
+			</div>
+			`
+					: ""
+			}
 		</div>
 	`;
 }
