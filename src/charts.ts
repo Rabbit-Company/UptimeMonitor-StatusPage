@@ -26,6 +26,7 @@ import {
 	getDateTime,
 } from "./utils";
 import { getCurrentTheme, type Theme } from "./themes";
+import { getAuthHeaders } from "./auth";
 
 // Register Chart.js components
 Chart.register(
@@ -390,17 +391,17 @@ export async function loadGroupHistory(item: StatusItem, period: Period): Promis
 	let endpoint: string;
 	switch (historyType) {
 		case "raw":
-			endpoint = `${BACKEND_URL}/v1/groups/${item.id}/history`;
+			endpoint = `${BACKEND_URL}/v1/status/${STATUS_PAGE_SLUG}/groups/${item.id}/history`;
 			break;
 		case "hourly":
-			endpoint = `${BACKEND_URL}/v1/groups/${item.id}/history/hourly`;
+			endpoint = `${BACKEND_URL}/v1/status/${STATUS_PAGE_SLUG}/groups/${item.id}/history/hourly`;
 			break;
 		case "daily":
-			endpoint = `${BACKEND_URL}/v1/groups/${item.id}/history/daily`;
+			endpoint = `${BACKEND_URL}/v1/status/${STATUS_PAGE_SLUG}/groups/${item.id}/history/daily`;
 			break;
 	}
 
-	const response = await fetch(endpoint);
+	const response = await fetch(endpoint, { headers: getAuthHeaders() });
 	if (!response.ok) throw new Error(`Failed to fetch group history`);
 
 	const historyData: GroupHistoryResponse = await response.json();
@@ -448,17 +449,17 @@ export async function loadMonitorHistory(item: StatusItem, period: Period): Prom
 	let endpoint: string;
 	switch (historyType) {
 		case "raw":
-			endpoint = `${BACKEND_URL}/v1/monitors/${item.id}/history`;
+			endpoint = `${BACKEND_URL}/v1/status/${STATUS_PAGE_SLUG}/monitors/${item.id}/history`;
 			break;
 		case "hourly":
-			endpoint = `${BACKEND_URL}/v1/monitors/${item.id}/history/hourly`;
+			endpoint = `${BACKEND_URL}/v1/status/${STATUS_PAGE_SLUG}/monitors/${item.id}/history/hourly`;
 			break;
 		case "daily":
-			endpoint = `${BACKEND_URL}/v1/monitors/${item.id}/history/daily`;
+			endpoint = `${BACKEND_URL}/v1/status/${STATUS_PAGE_SLUG}/monitors/${item.id}/history/daily`;
 			break;
 	}
 
-	const response = await fetch(endpoint);
+	const response = await fetch(endpoint, { headers: getAuthHeaders() });
 	if (!response.ok) throw new Error(`Failed to fetch monitor history`);
 
 	const historyData: MonitorHistoryResponse = await response.json();
