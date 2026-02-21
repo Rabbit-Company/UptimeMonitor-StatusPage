@@ -205,11 +205,49 @@
 							<h2 id="modalTitle" class="text-xl font-semibold text-[var(--text-primary)]"></h2>
 							<p id="modalSubtitle" class="text-sm text-[var(--text-muted)] mt-1"></p>
 						</div>
-						<button id="modalCloseBtn" class="cursor-pointer p-2 hover:bg-[var(--bg-hover)] rounded-lg transition-colors">
-							<svg class="w-5 h-5 text-[var(--text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-							</svg>
-						</button>
+						<div class="flex items-center space-x-2">
+							<!-- Export CSV Dropdown -->
+							<div id="exportDropdownWrapper" class="relative hidden">
+								<button id="exportDropdownBtn" class="cursor-pointer p-2 hover:bg-[var(--bg-hover)] rounded-lg transition-colors" title="Export CSV">
+									<svg class="w-5 h-5 text-[var(--text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+										></path>
+									</svg>
+								</button>
+								<div
+									id="exportDropdownMenu"
+									class="hidden absolute right-0 mt-1 w-44 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg shadow-lg z-50 overflow-hidden"
+								>
+									<button
+										data-export-type="raw"
+										class="export-csv-btn w-full text-left px-4 py-2.5 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
+									>
+										Raw (~24h)
+									</button>
+									<button
+										data-export-type="hourly"
+										class="export-csv-btn w-full text-left px-4 py-2.5 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
+									>
+										Hourly (~90d)
+									</button>
+									<button
+										data-export-type="daily"
+										class="export-csv-btn w-full text-left px-4 py-2.5 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer"
+									>
+										Daily (all time)
+									</button>
+								</div>
+							</div>
+							<button id="modalCloseBtn" class="cursor-pointer p-2 hover:bg-[var(--bg-hover)] rounded-lg transition-colors">
+								<svg class="w-5 h-5 text-[var(--text-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+								</svg>
+							</button>
+						</div>
 					</div>
 
 					<!-- Modal Body -->

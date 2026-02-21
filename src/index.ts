@@ -218,6 +218,33 @@ function setupEventListeners(): void {
 
 	// Password modal event listeners
 	setupPasswordModalListeners();
+
+	// Export CSV dropdown toggle
+	const exportDropdownBtn = document.getElementById("exportDropdownBtn");
+	const exportDropdownMenu = document.getElementById("exportDropdownMenu");
+	if (exportDropdownBtn && exportDropdownMenu) {
+		exportDropdownBtn.addEventListener("click", (e) => {
+			e.stopPropagation();
+			exportDropdownMenu.classList.toggle("hidden");
+		});
+
+		// Close dropdown when clicking outside
+		document.addEventListener("click", () => {
+			exportDropdownMenu.classList.add("hidden");
+		});
+	}
+
+	// Export CSV buttons
+	document.querySelectorAll(".export-csv-btn").forEach((btn) => {
+		btn.addEventListener("click", async (e) => {
+			const type = (e.currentTarget as HTMLElement).getAttribute("data-export-type") as "raw" | "hourly" | "daily";
+			if (type) {
+				const { exportCSV } = await import("./ui");
+				await exportCSV(type);
+				document.getElementById("exportDropdownMenu")?.classList.add("hidden");
+			}
+		});
+	});
 }
 
 /**

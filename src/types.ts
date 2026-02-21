@@ -14,6 +14,7 @@ export interface CustomMetricData {
 export interface StatusData {
 	name: string;
 	slug: string;
+	reports: boolean;
 	items: StatusItem[];
 	lastUpdated: string;
 }

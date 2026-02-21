@@ -3,6 +3,7 @@ import { UPTIME_PRECISION, LATENCY_PRECISION } from "./config";
 import { appState } from "./state";
 import { getUptimeValue, getDateTime } from "./utils";
 import { loadGroupHistory, loadMonitorHistory } from "./charts";
+import { getAuthHeaders } from "./auth";
 
 /**
  * Update overall status indicator
@@ -554,10 +555,19 @@ export async function openHistoryModal(item: StatusItem): Promise<void> {
 	document.getElementById("historyModal")!.classList.remove("hidden");
 	document.body.style.overflow = "hidden";
 
+	// Show/hide export button based on reports setting
+	const exportWrapper = document.getElementById("exportDropdownWrapper")!;
+	if (appState.statusData?.reports) {
+		exportWrapper.classList.remove("hidden");
+	} else {
+		exportWrapper.classList.add("hidden");
+	}
+
 	await loadModalHistory(item, appState.currentModalPeriod);
 }
 
 export function closeHistoryModal(): void {
+	document.getElementById("exportDropdownMenu")?.classList.add("hidden");
 	document.getElementById("historyModal")!.classList.add("hidden");
 	document.body.style.overflow = "auto";
 
@@ -586,6 +596,35 @@ export async function loadModalHistory(item: StatusItem, period: Period): Promis
 		}
 	} catch (error) {
 		console.error(`Error loading ${item.type} history:`, error);
+	}
+}
+
+/**
+ * Export CSV report for the current modal item
+ */
+export async function exportCSV(reportType: "raw" | "hourly" | "daily"): Promise<void> {
+	const item = appState.currentModalItem;
+	if (!item) return;
+
+	const typeSegment = item.type === "group" ? "groups" : "monitors";
+	const suffix = reportType === "raw" ? "" : `/${reportType}`;
+	const endpoint = `${BACKEND_URL}/v1/status/${STATUS_PAGE_SLUG}/${typeSegment}/${item.id}/reports${suffix}?format=csv`;
+
+	try {
+		const response = await fetch(endpoint, { headers: getAuthHeaders() });
+		if (!response.ok) throw new Error(`Export failed: ${response.status}`);
+
+		const blob = await response.blob();
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement("a");
+		a.href = url;
+		a.download = `${item.id}-${reportType}.csv`;
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+		URL.revokeObjectURL(url);
+	} catch (error) {
+		console.error("CSV export failed:", error);
 	}
 }
 
