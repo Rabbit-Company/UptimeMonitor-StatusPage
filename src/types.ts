@@ -87,6 +87,31 @@ export interface GroupHistoryResponse {
 export type HistoryType = "raw" | "hourly" | "daily";
 export type Period = "1h" | "24h" | "7d" | "30d" | "90d" | "365d";
 
+// Incident types
+export type IncidentStatus = "investigating" | "identified" | "monitoring" | "resolved";
+export type IncidentSeverity = "minor" | "major" | "critical";
+
+export interface IncidentUpdate {
+	id: string;
+	incident_id: string;
+	status: IncidentStatus;
+	message: string;
+	created_at: string;
+}
+
+export interface Incident {
+	id: string;
+	status_page_id: string;
+	title: string;
+	status: IncidentStatus;
+	severity: IncidentSeverity;
+	affected_monitors: string[];
+	created_at: string;
+	updated_at: string;
+	resolved_at: string | null;
+	updates: IncidentUpdate[];
+}
+
 // WebSocket message types
 export interface WSConnectedMessage {
 	action: "connected";
@@ -148,10 +173,63 @@ export interface WSMonitorRecoveredMessage {
 	timestamp: string;
 }
 
+export interface WSIncidentCreatedMessage {
+	action: "incident-created";
+	data: {
+		slug: string;
+		incident: Incident;
+	};
+	timestamp: string;
+}
+
+export interface WSIncidentUpdatedMessage {
+	action: "incident-updated";
+	data: {
+		slug: string;
+		incident: Incident;
+	};
+	timestamp: string;
+}
+
+export interface WSIncidentUpdateAddedMessage {
+	action: "incident-update-added";
+	data: {
+		slug: string;
+		incident: Incident;
+		update: IncidentUpdate;
+	};
+	timestamp: string;
+}
+
+export interface WSIncidentUpdateDeletedMessage {
+	action: "incident-update-deleted";
+	data: {
+		slug: string;
+		incidentId: string;
+		updateId: string;
+		incident: Incident;
+	};
+	timestamp: string;
+}
+
+export interface WSIncidentDeletedMessage {
+	action: "incident-deleted";
+	data: {
+		slug: string;
+		incidentId: string;
+	};
+	timestamp: string;
+}
+
 export type WSMessage =
 	| WSConnectedMessage
 	| WSSubscribedMessage
 	| WSPulseMessage
 	| WSMonitorDownMessage
 	| WSMonitorStillDownMessage
-	| WSMonitorRecoveredMessage;
+	| WSMonitorRecoveredMessage
+	| WSIncidentCreatedMessage
+	| WSIncidentUpdatedMessage
+	| WSIncidentUpdateAddedMessage
+	| WSIncidentUpdateDeletedMessage
+	| WSIncidentDeletedMessage;

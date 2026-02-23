@@ -112,6 +112,11 @@
 						</div>
 					</div>
 
+					<!-- Active Incidents (shown above monitors when there are ongoing incidents) -->
+					<section id="activeIncidents" class="mb-8 hidden">
+						<!-- Dynamically rendered by incidents.ts -->
+					</section>
+
 					<!-- Last Updated -->
 					<div class="text-right mb-4">
 						<p class="text-[var(--text-muted)] text-sm">Last updated: <span id="lastUpdated" class="text-[var(--text-muted)]"></span></p>
@@ -121,6 +126,15 @@
 					<div id="servicesList" class="space-y-4">
 						<!-- Services will be dynamically inserted here -->
 					</div>
+
+					<!-- Past Incidents -->
+					<section id="pastIncidents" class="mt-10">
+						<div class="flex items-center gap-2 mb-5">
+							<h2 class="text-lg font-bold text-[var(--text-primary)]">Past Incidents</h2>
+						</div>
+						<div id="pastIncidentsContent"></div>
+						<div id="pastIncidentsPagination"></div>
+					</section>
 				</main>
 
 				<!-- Footer -->

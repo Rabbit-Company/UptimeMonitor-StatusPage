@@ -5,6 +5,7 @@ import { showNotification } from "./notifications";
 import { updateMonitorUI, updateParentGroups, updateSummaryStats, updateOverallStatus } from "./ui";
 import { getDateTime } from "./utils";
 import { getStoredPassword } from "./auth";
+import { handleIncidentCreated, handleIncidentDeleted, handleIncidentUpdateAdded, handleIncidentUpdated, handleIncidentUpdateDeleted } from "./incidents";
 
 type ConnectionStatus = "connected" | "disconnected" | "reconnecting" | "error" | "failed";
 
@@ -106,6 +107,26 @@ function handleWSMessage(event: MessageEvent): void {
 
 			case "monitor-recovered":
 				handleMonitorRecovered(message);
+				break;
+
+			case "incident-created":
+				handleIncidentCreated(message);
+				break;
+
+			case "incident-updated":
+				handleIncidentUpdated(message);
+				break;
+
+			case "incident-update-added":
+				handleIncidentUpdateAdded(message);
+				break;
+
+			case "incident-update-deleted":
+				handleIncidentUpdateDeleted(message);
+				break;
+
+			case "incident-deleted":
+				handleIncidentDeleted(message);
 				break;
 
 			default:

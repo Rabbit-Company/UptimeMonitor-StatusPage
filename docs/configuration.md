@@ -104,14 +104,15 @@ items = ["all-services"]
 
 The status page fetches data from these endpoints on your backend:
 
-| Endpoint                                           | Purpose                 |
-| -------------------------------------------------- | ----------------------- |
-| `GET /v1/status/:slug`                             | Initial status data     |
-| `GET /v1/status/:slug/monitors/:id/history`        | Raw pulse history       |
-| `GET /v1/status/:slug/monitors/:id/history/hourly` | Hourly aggregated data  |
-| `GET /v1/status/:slug/monitors/:id/history/daily`  | Daily aggregated data   |
-| `GET /v1/status/:slug/groups/:id/history/*`        | Group history endpoints |
-| `WebSocket /ws`                                    | Real-time updates       |
+| Endpoint                                           | Purpose                       |
+| -------------------------------------------------- | ----------------------------- |
+| `GET /v1/status/:slug`                             | Initial status data           |
+| `GET /v1/status/:slug/monitors/:id/history`        | Raw pulse history             |
+| `GET /v1/status/:slug/monitors/:id/history/hourly` | Hourly aggregated data        |
+| `GET /v1/status/:slug/monitors/:id/history/daily`  | Daily aggregated data         |
+| `GET /v1/status/:slug/groups/:id/history/*`        | Group history endpoints       |
+| `GET /v1/status/:slug/incidents`                   | Incidents for the status page |
+| `WebSocket /ws`                                    | Real-time updates             |
 
 ## CORS Configuration
 

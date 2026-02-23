@@ -155,14 +155,177 @@ Sent when a down monitor comes back up:
 - Toast notification appears: "Production API has recovered"
 - Services up/down counters update
 
+### Incident Created
+
+Sent when a new incident is opened on the status page:
+
+```json
+{
+	"action": "incident-created",
+	"data": {
+		"slug": "status",
+		"incident": {
+			"id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+			"status_page_id": "main",
+			"title": "Database connectivity issues",
+			"status": "investigating",
+			"severity": "major",
+			"affected_monitors": ["api-prod"],
+			"created_at": "2026-02-15T10:30:00.000Z",
+			"updated_at": "2026-02-15T10:30:00.000Z",
+			"resolved_at": null,
+			"updates": [
+				{
+					"id": "f6e5d4c3-b2a1-0987-fedc-ba9876543210",
+					"incident_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+					"status": "investigating",
+					"message": "We are investigating reports of degraded database performance.",
+					"created_at": "2026-02-15T10:30:00.000Z"
+				}
+			]
+		}
+	},
+	"timestamp": "2026-02-15T10:30:00.000Z"
+}
+```
+
+**UI Updates**:
+
+- New incident appears in the incidents section
+- Toast notification for new incident
+
+### Incident Updated
+
+Sent when incident metadata changes (title, severity, or affected monitors):
+
+```json
+{
+	"action": "incident-updated",
+	"data": {
+		"slug": "status",
+		"incident": {
+			"id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+			"status_page_id": "main",
+			"title": "Database connectivity issues - update",
+			"status": "investigating",
+			"severity": "critical",
+			"affected_monitors": ["api-prod", "web-app"],
+			"created_at": "2026-02-15T10:30:00.000Z",
+			"updated_at": "2026-02-15T10:35:00.000Z",
+			"resolved_at": null,
+			"updates": []
+		}
+	},
+	"timestamp": "2026-02-15T10:35:00.000Z"
+}
+```
+
+**UI Updates**:
+
+- Incident title, severity badge, and affected monitors refresh
+
+### Incident Update Added
+
+Sent when a new timeline update is posted to an incident (progressing its status):
+
+```json
+{
+	"action": "incident-update-added",
+	"data": {
+		"slug": "status",
+		"incident": {
+			"id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+			"status_page_id": "main",
+			"title": "Database connectivity issues",
+			"status": "identified",
+			"severity": "major",
+			"affected_monitors": ["api-prod"],
+			"created_at": "2026-02-15T10:30:00.000Z",
+			"updated_at": "2026-02-15T10:45:00.000Z",
+			"resolved_at": null,
+			"updates": []
+		},
+		"update": {
+			"id": "11223344-5566-7788-99aa-bbccddeeff00",
+			"incident_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+			"status": "identified",
+			"message": "We have identified the root cause as a failed database migration.",
+			"created_at": "2026-02-15T10:45:00.000Z"
+		}
+	},
+	"timestamp": "2026-02-15T10:45:00.000Z"
+}
+```
+
+**UI Updates**:
+
+- New timeline entry appears on the incident
+- Incident status badge updates
+- Toast notification for status change
+- If status is `resolved`, the incident's `resolved_at` timestamp is set
+
+### Incident Update Deleted
+
+Sent when a timeline update is removed from an incident:
+
+```json
+{
+	"action": "incident-update-deleted",
+	"data": {
+		"slug": "status",
+		"incidentId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+		"updateId": "11223344-5566-7788-99aa-bbccddeeff00",
+		"incident": {
+			"id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+			"status_page_id": "main",
+			"title": "Database connectivity issues",
+			"status": "investigating",
+			"severity": "major",
+			"affected_monitors": ["api-prod"],
+			"created_at": "2026-02-15T10:30:00.000Z",
+			"updated_at": "2026-02-15T10:50:00.000Z",
+			"resolved_at": null,
+			"updates": []
+		}
+	},
+	"timestamp": "2026-02-15T10:50:00.000Z"
+}
+```
+
+**UI Updates**:
+
+- Timeline entry removed from the incident
+- Incident status may revert if the deleted update was the most recent
+
+### Incident Deleted
+
+Sent when an incident is fully removed:
+
+```json
+{
+	"action": "incident-deleted",
+	"data": {
+		"slug": "status",
+		"incidentId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+	},
+	"timestamp": "2026-02-15T11:00:00.000Z"
+}
+```
+
+**UI Updates**:
+
+- Incident removed from the incidents section
+
 ## Notifications
 
 Status changes trigger toast notifications in the bottom-right corner:
 
-| Event             | Type            | Example Message                |
-| ----------------- | --------------- | ------------------------------ |
-| Monitor down      | Error (red)     | "Production API is down"       |
-| Monitor recovered | Success (green) | "Production API has recovered" |
+| Event             | Type            | Example Message                                   |
+| ----------------- | --------------- | ------------------------------------------------- |
+| Monitor down      | Error (red)     | "Production API is down"                          |
+| Monitor recovered | Success (green) | "Production API has recovered"                    |
+| Incident created  | Warning (amber) | "New incident: Database connectivity issues"      |
+| Incident resolved | Success (green) | "Incident resolved: Database connectivity issues" |
 
 Notifications auto-dismiss after 5 seconds.
 

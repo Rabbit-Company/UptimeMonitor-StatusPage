@@ -4,6 +4,7 @@ import { appState } from "./state";
 import { getUptimeValue, getDateTime } from "./utils";
 import { loadGroupHistory, loadMonitorHistory } from "./charts";
 import { getAuthHeaders } from "./auth";
+import { initIncidents } from "./incidents";
 
 /**
  * Update overall status indicator
@@ -257,6 +258,7 @@ export function renderPage(): void {
 	document.getElementById("lastUpdated")!.textContent = getDateTime(appState.statusData.lastUpdated);
 
 	renderServices();
+	initIncidents();
 }
 
 function renderServices(): void {

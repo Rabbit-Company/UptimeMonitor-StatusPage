@@ -255,3 +255,24 @@ body {
 	color: var(--text-muted);
 	font-size: 0.75rem;
 }
+
+/*
+  Incidents
+*/
+
+.incident-nav-btn:hover {
+	filter: brightness(1.2);
+}
+
+.incident-timeline {
+	animation: incident-expand 0.2s ease-out;
+}
+
+@keyframes incident-expand {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
