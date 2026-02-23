@@ -435,14 +435,14 @@ function renderPagination(container: HTMLElement): void {
 
 	container.innerHTML = `
 		<div class="flex items-center justify-between pt-4">
-			<button id="incidentsPrevMonth" class="incident-nav-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors" style="background:var(--bg-tertiary);color:var(--text-secondary);border:1px solid var(--border-primary)">
+			<button id="incidentsPrevMonth" class="cursor-pointer incident-nav-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors" style="background:var(--bg-tertiary);color:var(--text-secondary);border:1px solid var(--border-primary)">
 				<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
 				${formatMonthLabel(prev)}
 			</button>
 			<span class="text-xs font-medium" style="color:var(--text-muted)">${formatMonthLabel(currentMonth)}</span>
 			${
 				!isCurrentMonth
-					? `<button id="incidentsNextMonth" class="incident-nav-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors" style="background:var(--bg-tertiary);color:var(--text-secondary);border:1px solid var(--border-primary)">
+					? `<button id="incidentsNextMonth" class="cursor-pointer incident-nav-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors" style="background:var(--bg-tertiary);color:var(--text-secondary);border:1px solid var(--border-primary)">
 				${formatMonthLabel(next)}
 				<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
 			</button>`
