@@ -369,10 +369,10 @@ export async function renderPastIncidents(month?: string): Promise<void> {
 	isFetching = true;
 
 	contentEl.innerHTML = `
-		<div class="flex items-center justify-center py-8">
-			<div class="w-5 h-5 border-2 rounded-full animate-spin" style="border-color:var(--accent-primary);border-top-color:transparent"></div>
-			<span class="ml-3 text-sm" style="color:var(--text-muted)">Loading incidents...</span>
-		</div>`;
+    <div class="rounded-xl p-6 flex flex-col items-center justify-center" style="background:var(--bg-secondary);border:1px solid var(--border-primary)">
+        <div class="w-10 h-10 rounded-full mb-3 animate-pulse" style="background:var(--bg-tertiary)"></div>
+        <div class="h-4.5 w-64 rounded animate-pulse" style="background:var(--bg-tertiary)"></div>
+    </div>`;
 
 	try {
 		const incidents = await getIncidentsForMonth(currentMonth);
@@ -434,19 +434,19 @@ function renderPagination(container: HTMLElement): void {
 	const next = nextMonth(currentMonth);
 
 	container.innerHTML = `
-		<div class="flex items-center justify-between pt-4">
-			<button id="incidentsPrevMonth" class="cursor-pointer incident-nav-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors" style="background:var(--bg-tertiary);color:var(--text-secondary);border:1px solid var(--border-primary)">
+		<div class="grid grid-cols-3 items-center pt-4">
+			<button id="incidentsPrevMonth" class="cursor-pointer justify-self-start incident-nav-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors" style="background:var(--bg-tertiary);color:var(--text-secondary);border:1px solid var(--border-primary)">
 				<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
 				${formatMonthLabel(prev)}
 			</button>
-			<span class="text-xs font-medium" style="color:var(--text-muted)">${formatMonthLabel(currentMonth)}</span>
+			<span class="justify-self-center text-xs font-medium" style="color:var(--text-muted)">${formatMonthLabel(currentMonth)}</span>
 			${
 				!isCurrentMonth
-					? `<button id="incidentsNextMonth" class="cursor-pointer incident-nav-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors" style="background:var(--bg-tertiary);color:var(--text-secondary);border:1px solid var(--border-primary)">
+					? `<button id="incidentsNextMonth" class="justify-self-end cursor-pointer incident-nav-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors" style="background:var(--bg-tertiary);color:var(--text-secondary);border:1px solid var(--border-primary)">
 				${formatMonthLabel(next)}
 				<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
 			</button>`
-					: `<div></div>`
+					: `<div class="justify-self-end"></div>`
 			}
 		</div>`;
 
