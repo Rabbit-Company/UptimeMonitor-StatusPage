@@ -215,6 +215,46 @@ export function updateParentGroups(monitorId: string): void {
 }
 
 /**
+ * Update a specific item's uptime display in the DOM
+ */
+export function updateUptimeUI(itemId: string, item: StatusItem): void {
+	const uptimeVal = getUptimeValue(item, appState.selectedUptimePeriod);
+	if (uptimeVal === undefined) return;
+
+	const desktopUptime = document.querySelector(`[data-uptime-desktop="${itemId}"]`);
+	if (desktopUptime) {
+		desktopUptime.textContent = `${uptimeVal.toFixed(UPTIME_PRECISION)}%`;
+		desktopUptime.className = `text-sm font-semibold ${getUptimeColorClass(uptimeVal)}`;
+		desktopUptime.classList.add("animate-pulse");
+		setTimeout(() => desktopUptime.classList.remove("animate-pulse"), 1000);
+	}
+
+	const mobileUptime = document.querySelector(`[data-uptime-mobile="${itemId}"]`);
+	if (mobileUptime) {
+		mobileUptime.textContent = `${uptimeVal.toFixed(UPTIME_PRECISION)}%`;
+		mobileUptime.className = `text-sm font-semibold ${getUptimeColorClass(uptimeVal)}`;
+		mobileUptime.classList.add("animate-pulse");
+		setTimeout(() => mobileUptime.classList.remove("animate-pulse"), 1000);
+	}
+}
+
+/**
+ * Recalculate and update the overall uptime displayed in the summary card
+ */
+export function updateOverallUptime(): void {
+	if (!appState.statusData) return;
+
+	const uptimeValues: number[] = appState.statusData.items.map((i) => getUptimeValue(i, appState.selectedUptimePeriod) || 0);
+
+	const averageUptime = uptimeValues.length > 0 ? (uptimeValues.reduce((sum, val) => sum + val, 0) / uptimeValues.length).toFixed(UPTIME_PRECISION) + "%" : "-";
+
+	const uptimeEl = document.getElementById("uptimeValue")!;
+	uptimeEl.textContent = averageUptime;
+	uptimeEl.classList.add("animate-pulse");
+	setTimeout(() => uptimeEl.classList.remove("animate-pulse"), 1000);
+}
+
+/**
  * Render the main page content
  */
 export function renderPage(): void {

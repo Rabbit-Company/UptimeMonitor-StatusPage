@@ -141,6 +141,21 @@ export interface WSPulseMessage {
 	timestamp: string;
 }
 
+export interface WSUptimeUpdateMessage {
+	action: "uptime-update";
+	data: {
+		slug: string;
+		monitorId: string;
+		uptime1h: number;
+		uptime24h: number;
+		uptime7d: number;
+		uptime30d: number;
+		uptime90d: number;
+		uptime365d: number;
+	};
+	timestamp: string;
+}
+
 export interface WSMonitorDownMessage {
 	action: "monitor-down";
 	data: {
@@ -225,6 +240,7 @@ export type WSMessage =
 	| WSConnectedMessage
 	| WSSubscribedMessage
 	| WSPulseMessage
+	| WSUptimeUpdateMessage
 	| WSMonitorDownMessage
 	| WSMonitorStillDownMessage
 	| WSMonitorRecoveredMessage

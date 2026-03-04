@@ -1,8 +1,8 @@
-import type { WSMessage, WSPulseMessage, WSMonitorDownMessage, WSMonitorStillDownMessage, WSMonitorRecoveredMessage } from "./types";
+import type { WSMessage, WSPulseMessage, WSMonitorDownMessage, WSMonitorStillDownMessage, WSMonitorRecoveredMessage, WSUptimeUpdateMessage } from "./types";
 import { BACKEND_URL, STATUS_PAGE_SLUG, WS_MAX_RECONNECT_ATTEMPTS, WS_RECONNECT_BASE_DELAY, WS_RECONNECT_MAX_DELAY } from "./config";
 import { appState } from "./state";
 import { showNotification } from "./notifications";
-import { updateMonitorUI, updateParentGroups, updateSummaryStats, updateOverallStatus } from "./ui";
+import { updateMonitorUI, updateParentGroups, updateSummaryStats, updateOverallStatus, updateUptimeUI, updateOverallUptime } from "./ui";
 import { getDateTime } from "./utils";
 import { getStoredPassword } from "./auth";
 import { handleIncidentCreated, handleIncidentDeleted, handleIncidentUpdateAdded, handleIncidentUpdated, handleIncidentUpdateDeleted } from "./incidents";
@@ -97,6 +97,10 @@ function handleWSMessage(event: MessageEvent): void {
 				handlePulseUpdate(message);
 				break;
 
+			case "uptime-update":
+				handleUptimeUpdate(message);
+				break;
+
 			case "monitor-down":
 				handleMonitorDown(message);
 				break;
@@ -147,6 +151,9 @@ function handlePulseUpdate(message: WSPulseMessage): void {
 
 	const monitor = appState.findItemById(monitorId);
 	if (monitor && monitor.type === "monitor") {
+		// Do not update values when receiving older pulse
+		if (monitor.lastCheck && new Date(timestamp).getTime() < new Date(monitor.lastCheck).getTime()) return;
+
 		const previousStatus = monitor.status;
 		monitor.status = status;
 		monitor.latency = latency;
@@ -171,10 +178,33 @@ function handlePulseUpdate(message: WSPulseMessage): void {
 			updateOverallStatus();
 		}
 
-		document.getElementById("lastUpdated")!.textContent = getDateTime(appState.statusData.lastUpdated);
+		document.getElementById("lastUpdated")!.textContent = getDateTime(new Date());
 	}
 
 	updateParentGroups(monitorId);
+}
+
+/**
+ * Handle uptime update event
+ */
+function handleUptimeUpdate(message: WSUptimeUpdateMessage): void {
+	if (!appState.statusData) return;
+
+	const { monitorId, uptime1h, uptime24h, uptime7d, uptime30d, uptime90d, uptime365d } = message.data;
+
+	const item = appState.findItemById(monitorId);
+	if (!item) return;
+
+	item.uptime1h = uptime1h;
+	item.uptime24h = uptime24h;
+	item.uptime7d = uptime7d;
+	item.uptime30d = uptime30d;
+	item.uptime90d = uptime90d;
+	item.uptime365d = uptime365d;
+
+	updateUptimeUI(monitorId, item);
+
+	updateOverallUptime();
 }
 
 /**
