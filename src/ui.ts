@@ -5,6 +5,7 @@ import { getUptimeValue, getDateTime } from "./utils";
 import { loadGroupHistory, loadMonitorHistory } from "./charts";
 import { getAuthHeaders } from "./auth";
 import { initIncidents } from "./incidents";
+import { initMaintenances } from "./maintenances";
 
 /**
  * Update overall status indicator
@@ -223,7 +224,7 @@ export function updateUptimeUI(itemId: string, item: StatusItem): void {
 
 	const desktopUptime = document.querySelector(`[data-uptime-desktop="${itemId}"]`);
 	if (desktopUptime) {
-		desktopUptime.textContent = `${uptimeVal.toFixed(UPTIME_PRECISION)}%`;
+		desktopUptime.textContent = uptimeVal >= 0 ? `${uptimeVal.toFixed(UPTIME_PRECISION)}%` : "-";
 		desktopUptime.className = `text-sm font-semibold ${getUptimeColorClass(uptimeVal)}`;
 		desktopUptime.classList.add("animate-pulse");
 		setTimeout(() => desktopUptime.classList.remove("animate-pulse"), 1000);
@@ -231,7 +232,7 @@ export function updateUptimeUI(itemId: string, item: StatusItem): void {
 
 	const mobileUptime = document.querySelector(`[data-uptime-mobile="${itemId}"]`);
 	if (mobileUptime) {
-		mobileUptime.textContent = `${uptimeVal.toFixed(UPTIME_PRECISION)}%`;
+		mobileUptime.textContent = uptimeVal >= 0 ? `${uptimeVal.toFixed(UPTIME_PRECISION)}%` : "-";
 		mobileUptime.className = `text-sm font-semibold ${getUptimeColorClass(uptimeVal)}`;
 		mobileUptime.classList.add("animate-pulse");
 		setTimeout(() => mobileUptime.classList.remove("animate-pulse"), 1000);
@@ -244,7 +245,7 @@ export function updateUptimeUI(itemId: string, item: StatusItem): void {
 export function updateOverallUptime(): void {
 	if (!appState.statusData) return;
 
-	const uptimeValues: number[] = appState.statusData.items.map((i) => getUptimeValue(i, appState.selectedUptimePeriod) || 0);
+	const uptimeValues: number[] = appState.statusData.items.map((i) => getUptimeValue(i, appState.selectedUptimePeriod) || 0).filter((v) => v >= 0);
 
 	const averageUptime = uptimeValues.length > 0 ? (uptimeValues.reduce((sum, val) => sum + val, 0) / uptimeValues.length).toFixed(UPTIME_PRECISION) + "%" : "-";
 
@@ -283,7 +284,7 @@ export function renderPage(): void {
 
 	countServices(appState.statusData.items);
 
-	const uptimeValues: number[] = appState.statusData.items.map((i) => getUptimeValue(i, appState.selectedUptimePeriod) || 0);
+	const uptimeValues: number[] = appState.statusData.items.map((i) => getUptimeValue(i, appState.selectedUptimePeriod) || 0).filter((v) => v >= 0);
 	const averageUptime = uptimeValues.length > 0 ? (uptimeValues.reduce((sum, val) => sum + val, 0) / uptimeValues.length).toFixed(UPTIME_PRECISION) + "%" : "-";
 
 	const latencyValues: number[] = appState.statusData.items.map((i) => i.latency);
@@ -299,6 +300,7 @@ export function renderPage(): void {
 
 	renderServices();
 	initIncidents();
+	initMaintenances();
 }
 
 function renderServices(): void {
@@ -368,7 +370,7 @@ function renderGroupHTML(item: StatusItem): string {
 								? `
 						<div class="text-right">
 							<p class="text-sm text-[var(--text-muted)]">Uptime (${appState.selectedUptimePeriod})</p>
-							<p data-uptime-desktop="${item.id}" class="text-sm font-semibold ${getUptimeColorClass(uptimeVal)}">${uptimeVal.toFixed(UPTIME_PRECISION)}%</p>
+							<p data-uptime-desktop="${item.id}" class="text-sm font-semibold ${getUptimeColorClass(uptimeVal)}">${uptimeVal >= 0 ? `${uptimeVal.toFixed(UPTIME_PRECISION)}%` : "-"}</p>
 						</div>
 						`
 								: ""
@@ -403,7 +405,7 @@ function renderGroupHTML(item: StatusItem): string {
 							? `
 					<div class="text-right">
 						<p class="text-xs text-[var(--text-muted)]">Uptime (${appState.selectedUptimePeriod})</p>
-						<p data-uptime-mobile="${item.id}" class="text-sm font-semibold ${getUptimeColorClass(uptimeVal)}">${uptimeVal.toFixed(UPTIME_PRECISION)}%</p>
+						<p data-uptime-mobile="${item.id}" class="text-sm font-semibold ${getUptimeColorClass(uptimeVal)}">${uptimeVal >= 0 ? `${uptimeVal.toFixed(UPTIME_PRECISION)}%` : "-"}</p>
 					</div>
 					`
 							: ""
@@ -491,7 +493,7 @@ function renderMonitorHTML(item: StatusItem): string {
 						${customMetricsHtml}
 						<div class="text-right">
 							<p class="text-sm text-[var(--text-muted)]">Uptime (${appState.selectedUptimePeriod})</p>
-							<p data-uptime-desktop="${item.id}" class="text-sm font-semibold ${getUptimeColorClass(uptimeVal!)}">${uptimeVal?.toFixed(UPTIME_PRECISION)}%</p>
+							<p data-uptime-desktop="${item.id}" class="text-sm font-semibold ${getUptimeColorClass(uptimeVal!)}">${uptimeVal! >= 0 ? `${uptimeVal?.toFixed(UPTIME_PRECISION)}%` : "-"}</p>
 						</div>
 					</div>
 					<div class="flex items-center space-x-2 ml-4">
@@ -521,7 +523,7 @@ function renderMonitorHTML(item: StatusItem): string {
 					${customMetricsMobileHtml}
 					<div class="text-right">
 						<p class="text-xs text-[var(--text-muted)]">Uptime (${appState.selectedUptimePeriod})</p>
-						<p data-uptime-mobile="${item.id}" class="text-sm font-semibold ${getUptimeColorClass(uptimeVal!)}">${uptimeVal?.toFixed(UPTIME_PRECISION)}%</p>
+						<p data-uptime-mobile="${item.id}" class="text-sm font-semibold ${getUptimeColorClass(uptimeVal!)}">${uptimeVal! >= 0 ? `${uptimeVal?.toFixed(UPTIME_PRECISION)}%` : "-"}</p>
 					</div>
 				</div>
 			</div>

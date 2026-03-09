@@ -237,6 +237,80 @@ export interface WSIncidentDeletedMessage {
 	timestamp: string;
 }
 
+// Maintenance types
+export type MaintenanceStatus = "scheduled" | "in_progress" | "completed" | "cancelled";
+
+export interface MaintenanceUpdate {
+	id: string;
+	maintenance_id: string;
+	status: MaintenanceStatus;
+	message: string;
+	created_at: string;
+}
+
+export interface Maintenance {
+	id: string;
+	status_page_id: string;
+	title: string;
+	status: MaintenanceStatus;
+	scheduled_start: string;
+	scheduled_end: string;
+	affected_monitors: string[];
+	suppress_notifications: boolean;
+	created_at: string;
+	updated_at: string;
+	completed_at: string | null;
+	updates: MaintenanceUpdate[];
+}
+
+export interface WSMaintenanceCreatedMessage {
+	action: "maintenance-created";
+	data: {
+		slug: string;
+		maintenance: Maintenance;
+	};
+	timestamp: string;
+}
+
+export interface WSMaintenanceUpdatedMessage {
+	action: "maintenance-updated";
+	data: {
+		slug: string;
+		maintenance: Maintenance;
+	};
+	timestamp: string;
+}
+
+export interface WSMaintenanceUpdateAddedMessage {
+	action: "maintenance-update-added";
+	data: {
+		slug: string;
+		maintenance: Maintenance;
+		update: MaintenanceUpdate;
+	};
+	timestamp: string;
+}
+
+export interface WSMaintenanceUpdateDeletedMessage {
+	action: "maintenance-update-deleted";
+	data: {
+		slug: string;
+		maintenanceId: string;
+		updateId: string;
+		maintenance: Maintenance;
+	};
+	timestamp: string;
+}
+
+export interface WSMaintenanceDeletedMessage {
+	action: "maintenance-deleted";
+	data: {
+		slug: string;
+		maintenanceId: string;
+	};
+	timestamp: string;
+}
+
 export type WSMessage =
 	| WSConnectedMessage
 	| WSSubscribedMessage
@@ -249,4 +323,9 @@ export type WSMessage =
 	| WSIncidentUpdatedMessage
 	| WSIncidentUpdateAddedMessage
 	| WSIncidentUpdateDeletedMessage
-	| WSIncidentDeletedMessage;
+	| WSIncidentDeletedMessage
+	| WSMaintenanceCreatedMessage
+	| WSMaintenanceUpdatedMessage
+	| WSMaintenanceUpdateAddedMessage
+	| WSMaintenanceUpdateDeletedMessage
+	| WSMaintenanceDeletedMessage;

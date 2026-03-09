@@ -6,6 +6,13 @@ import { updateMonitorUI, updateParentGroups, updateSummaryStats, updateOverallS
 import { getDateTime } from "./utils";
 import { getStoredPassword } from "./auth";
 import { handleIncidentCreated, handleIncidentDeleted, handleIncidentUpdateAdded, handleIncidentUpdated, handleIncidentUpdateDeleted } from "./incidents";
+import {
+	handleMaintenanceCreated,
+	handleMaintenanceDeleted,
+	handleMaintenanceUpdateAdded,
+	handleMaintenanceUpdated,
+	handleMaintenanceUpdateDeleted,
+} from "./maintenances";
 
 type ConnectionStatus = "connected" | "disconnected" | "reconnecting" | "error" | "failed";
 
@@ -131,6 +138,26 @@ function handleWSMessage(event: MessageEvent): void {
 
 			case "incident-deleted":
 				handleIncidentDeleted(message);
+				break;
+
+			case "maintenance-created":
+				handleMaintenanceCreated(message);
+				break;
+
+			case "maintenance-updated":
+				handleMaintenanceUpdated(message);
+				break;
+
+			case "maintenance-update-added":
+				handleMaintenanceUpdateAdded(message);
+				break;
+
+			case "maintenance-update-deleted":
+				handleMaintenanceUpdateDeleted(message);
+				break;
+
+			case "maintenance-deleted":
+				handleMaintenanceDeleted(message);
 				break;
 
 			default:

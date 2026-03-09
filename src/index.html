@@ -117,6 +117,11 @@
 						<!-- Dynamically rendered by incidents.ts -->
 					</section>
 
+					<!-- Active Maintenances (shown above monitors when there are scheduled/in-progress maintenances) -->
+					<section id="activeMaintenances" class="mb-8 hidden">
+						<!-- Dynamically rendered by maintenances.ts -->
+					</section>
+
 					<!-- Last Updated -->
 					<div class="text-right mb-4">
 						<p class="text-[var(--text-muted)] text-sm">Last updated: <span id="lastUpdated" class="text-[var(--text-muted)]"></span></p>
@@ -134,6 +139,15 @@
 						</div>
 						<div id="pastIncidentsContent"></div>
 						<div id="pastIncidentsPagination"></div>
+					</section>
+
+					<!-- Past Maintenances -->
+					<section id="pastMaintenances" class="mt-10">
+						<div class="flex items-center gap-2 mb-5">
+							<h2 class="text-lg font-bold text-[var(--text-primary)]">Past Maintenances</h2>
+						</div>
+						<div id="pastMaintenancesContent"></div>
+						<div id="pastMaintenancesPagination"></div>
 					</section>
 				</main>
 
