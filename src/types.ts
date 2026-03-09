@@ -106,6 +106,7 @@ export interface Incident {
 	status: IncidentStatus;
 	severity: IncidentSeverity;
 	affected_monitors: string[];
+	suppress_notifications: boolean;
 	created_at: string;
 	updated_at: string;
 	resolved_at: string | null;
