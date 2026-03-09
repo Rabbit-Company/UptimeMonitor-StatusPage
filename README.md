@@ -6,16 +6,17 @@ A real-time status page frontend for [UptimeMonitor-Server](https://github.com/R
 
 ## Features
 
-| Feature                 | Description                                      |
-| ----------------------- | ------------------------------------------------ |
-| **Real-Time Updates**   | WebSocket connection for instant status changes  |
-| **Interactive Charts**  | Zoom and pan through uptime/latency history      |
-| **15 Themes**           | Midnight, OLED, Tokyo Night, Dracula, and more   |
-| **Custom Metrics**      | Display up to 3 custom metrics per monitor       |
-| **Incident Tracking**   | View active and past incidents with timelines    |
-| **Responsive Design**   | Optimized for desktop, tablet, and mobile        |
-| **Toast Notifications** | Live alerts for status changes                   |
-| **Group Support**       | Hierarchical organization with expandable groups |
+| Feature                    | Description                                              |
+| -------------------------- | -------------------------------------------------------- |
+| **Real-Time Updates**      | WebSocket connection for instant status changes          |
+| **Interactive Charts**     | Zoom and pan through uptime/latency history              |
+| **15 Themes**              | Midnight, OLED, Tokyo Night, Dracula, and more           |
+| **Custom Metrics**         | Display up to 3 custom metrics per monitor               |
+| **Incident Tracking**      | View active and past incidents with timelines            |
+| **Maintenance Scheduling** | Schedule and track maintenance windows with live updates |
+| **Responsive Design**      | Optimized for desktop, tablet, and mobile                |
+| **Toast Notifications**    | Live alerts for status changes                           |
+| **Group Support**          | Hierarchical organization with expandable groups         |
 
 ## Quick Start
 

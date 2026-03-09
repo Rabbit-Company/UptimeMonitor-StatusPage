@@ -345,16 +345,188 @@ Sent when an incident is fully removed:
 
 - Incident removed from the incidents section
 
+### Maintenance Created
+
+Sent when a new maintenance is scheduled on the status page:
+
+```json
+{
+	"action": "maintenance-created",
+	"data": {
+		"slug": "status",
+		"maintenance": {
+			"id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+			"status_page_id": "main",
+			"title": "Scheduled database upgrade",
+			"status": "scheduled",
+			"scheduled_start": "2026-02-20T02:00:00.000Z",
+			"scheduled_end": "2026-02-20T04:00:00.000Z",
+			"affected_monitors": ["api-prod", "web-app"],
+			"suppress_notifications": true,
+			"created_at": "2026-02-15T12:00:00.000Z",
+			"updated_at": "2026-02-15T12:00:00.000Z",
+			"completed_at": null,
+			"updates": [
+				{
+					"id": "c3d4e5f6-a7b8-9012-cdef-234567890123",
+					"maintenance_id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+					"status": "scheduled",
+					"message": "We will be performing a database upgrade during this maintenance window.",
+					"created_at": "2026-02-15T12:00:00.000Z"
+				}
+			]
+		}
+	},
+	"timestamp": "2026-02-15T12:00:00.000Z"
+}
+```
+
+**UI Updates**:
+
+- New maintenance appears in the active maintenances section
+- Toast notification: "Maintenance scheduled: Scheduled database upgrade"
+
+### Maintenance Updated
+
+Sent when maintenance metadata changes (title, schedule, or affected monitors):
+
+```json
+{
+	"action": "maintenance-updated",
+	"data": {
+		"slug": "status",
+		"maintenance": {
+			"id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+			"status_page_id": "main",
+			"title": "Scheduled database upgrade - extended window",
+			"status": "scheduled",
+			"scheduled_start": "2026-02-20T02:00:00.000Z",
+			"scheduled_end": "2026-02-20T06:00:00.000Z",
+			"affected_monitors": ["api-prod", "web-app", "db-primary"],
+			"suppress_notifications": true,
+			"created_at": "2026-02-15T12:00:00.000Z",
+			"updated_at": "2026-02-15T14:00:00.000Z",
+			"completed_at": null,
+			"updates": []
+		}
+	},
+	"timestamp": "2026-02-15T14:00:00.000Z"
+}
+```
+
+**UI Updates**:
+
+- Maintenance title, scheduled window, and affected monitors refresh
+
+### Maintenance Update Added
+
+Sent when a new timeline update is posted to a maintenance (progressing its status):
+
+```json
+{
+	"action": "maintenance-update-added",
+	"data": {
+		"slug": "status",
+		"maintenance": {
+			"id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+			"status_page_id": "main",
+			"title": "Scheduled database upgrade",
+			"status": "in_progress",
+			"scheduled_start": "2026-02-20T02:00:00.000Z",
+			"scheduled_end": "2026-02-20T04:00:00.000Z",
+			"affected_monitors": ["api-prod", "web-app"],
+			"suppress_notifications": true,
+			"created_at": "2026-02-15T12:00:00.000Z",
+			"updated_at": "2026-02-20T02:00:00.000Z",
+			"completed_at": null,
+			"updates": []
+		},
+		"update": {
+			"id": "d4e5f6a7-b8c9-0123-defa-345678901234",
+			"maintenance_id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+			"status": "in_progress",
+			"message": "Maintenance has started. Database upgrade is now underway.",
+			"created_at": "2026-02-20T02:00:00.000Z"
+		}
+	},
+	"timestamp": "2026-02-20T02:00:00.000Z"
+}
+```
+
+**UI Updates**:
+
+- New timeline entry appears on the maintenance
+- Maintenance status badge updates
+- Toast notification for status change
+- If status is `completed`, the maintenance's `completed_at` timestamp is set and the maintenance moves to the past maintenances section
+
+### Maintenance Update Deleted
+
+Sent when a timeline update is removed from a maintenance:
+
+```json
+{
+	"action": "maintenance-update-deleted",
+	"data": {
+		"slug": "status",
+		"maintenanceId": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+		"updateId": "d4e5f6a7-b8c9-0123-defa-345678901234",
+		"maintenance": {
+			"id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+			"status_page_id": "main",
+			"title": "Scheduled database upgrade",
+			"status": "scheduled",
+			"scheduled_start": "2026-02-20T02:00:00.000Z",
+			"scheduled_end": "2026-02-20T04:00:00.000Z",
+			"affected_monitors": ["api-prod", "web-app"],
+			"suppress_notifications": true,
+			"created_at": "2026-02-15T12:00:00.000Z",
+			"updated_at": "2026-02-20T02:05:00.000Z",
+			"completed_at": null,
+			"updates": []
+		}
+	},
+	"timestamp": "2026-02-20T02:05:00.000Z"
+}
+```
+
+**UI Updates**:
+
+- Timeline entry removed from the maintenance
+- Maintenance status may revert if the deleted update was the most recent
+
+### Maintenance Deleted
+
+Sent when a maintenance is fully removed:
+
+```json
+{
+	"action": "maintenance-deleted",
+	"data": {
+		"slug": "status",
+		"maintenanceId": "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+	},
+	"timestamp": "2026-02-20T06:00:00.000Z"
+}
+```
+
+**UI Updates**:
+
+- Maintenance removed from the maintenances section
+
 ## Notifications
 
 Status changes trigger toast notifications in the bottom-right corner:
 
-| Event             | Type            | Example Message                                   |
-| ----------------- | --------------- | ------------------------------------------------- |
-| Monitor down      | Error (red)     | "Production API is down"                          |
-| Monitor recovered | Success (green) | "Production API has recovered"                    |
-| Incident created  | Warning (amber) | "New incident: Database connectivity issues"      |
-| Incident resolved | Success (green) | "Incident resolved: Database connectivity issues" |
+| Event                   | Type            | Example Message                                     |
+| ----------------------- | --------------- | --------------------------------------------------- |
+| Monitor down            | Error (red)     | "Production API is down"                            |
+| Monitor recovered       | Success (green) | "Production API has recovered"                      |
+| Incident created        | Warning (amber) | "New incident: Database connectivity issues"        |
+| Incident resolved       | Success (green) | "Incident resolved: Database connectivity issues"   |
+| Maintenance scheduled   | Warning (amber) | "Maintenance scheduled: Scheduled database upgrade" |
+| Maintenance in progress | Warning (amber) | "Maintenance started: Scheduled database upgrade"   |
+| Maintenance completed   | Success (green) | "Maintenance completed: Scheduled database upgrade" |
 
 Notifications auto-dismiss after 5 seconds.
 
