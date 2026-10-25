@@ -2,7 +2,8 @@ import type { WSMessage, WSPulseMessage, WSMonitorDownMessage, WSMonitorStillDow
 import { BACKEND_URL, STATUS_PAGE_SLUG, WS_MAX_RECONNECT_ATTEMPTS, WS_RECONNECT_BASE_DELAY, WS_RECONNECT_MAX_DELAY } from "./config";
 import { appState } from "./state";
 import { showNotification } from "./notifications";
-import { updateMonitorUI, updateParentGroups, updateSummaryStats, updateOverallStatus, updateUptimeUI, updateOverallUptime } from "./ui";
+import { updateMonitorUI, updateSummaryStats, updateOverallStatus, updateUptimeUI, updateOverallUptime } from "./ui";
+import { scheduleStatusRefresh } from "./status-sync";
 import { getDateTime } from "./utils";
 import { getStoredPassword } from "./auth";
 import { handleIncidentCreated, handleIncidentDeleted, handleIncidentUpdateAdded, handleIncidentUpdated, handleIncidentUpdateDeleted } from "./incidents";
@@ -98,6 +99,7 @@ function handleWSMessage(event: MessageEvent): void {
 
 			case "subscribed":
 				console.log(`[WS] Subscribed to status page: ${message.slug}`);
+				scheduleStatusRefresh();
 				break;
 
 			case "pulse":
@@ -175,40 +177,33 @@ function handlePulseUpdate(message: WSPulseMessage): void {
 	if (!appState.statusData) return;
 
 	const { monitorId, status, latency, timestamp, custom1, custom2, custom3 } = message.data;
-
 	const monitor = appState.findItemById(monitorId);
-	if (monitor && monitor.type === "monitor") {
-		// Do not update values when receiving older pulse
-		if (monitor.lastCheck && new Date(timestamp).getTime() < new Date(monitor.lastCheck).getTime()) return;
-
-		const previousStatus = monitor.status;
-		monitor.status = status;
-		monitor.latency = latency;
-		monitor.lastCheck = timestamp;
-
-		if (custom1 !== undefined && monitor.custom1) {
-			monitor.custom1.value = custom1;
-		}
-		if (custom2 !== undefined && monitor.custom2) {
-			monitor.custom2.value = custom2;
-		}
-		if (custom3 !== undefined && monitor.custom3) {
-			monitor.custom3.value = custom3;
-		}
-
-		appState.statusData.lastUpdated = timestamp;
-
-		updateMonitorUI(monitorId, monitor);
-		updateSummaryStats();
-
-		if (previousStatus !== status) {
-			updateOverallStatus();
-		}
-
-		document.getElementById("lastUpdated")!.textContent = getDateTime(new Date());
+	if (!monitor || monitor.type !== "monitor") {
+		// The first pulse can introduce an item omitted from the initial snapshot.
+		scheduleStatusRefresh();
+		return;
 	}
 
-	updateParentGroups(monitorId);
+	// Do not update values when receiving an older pulse.
+	if (monitor.lastCheck && new Date(timestamp).getTime() < new Date(monitor.lastCheck).getTime()) return;
+
+	const previousStatus = monitor.status;
+	monitor.status = status;
+	monitor.latency = latency;
+	monitor.lastCheck = timestamp;
+
+	if (custom1 !== undefined && monitor.custom1) monitor.custom1.value = custom1;
+	if (custom2 !== undefined && monitor.custom2) monitor.custom2.value = custom2;
+	if (custom3 !== undefined && monitor.custom3) monitor.custom3.value = custom3;
+
+	appState.statusData.lastUpdated = timestamp;
+	updateMonitorUI(monitorId, monitor);
+	updateSummaryStats();
+	if (previousStatus !== status) {
+		updateOverallStatus();
+		scheduleStatusRefresh();
+	}
+	document.getElementById("lastUpdated")!.textContent = getDateTime(new Date());
 }
 
 /**
@@ -220,7 +215,10 @@ function handleUptimeUpdate(message: WSUptimeUpdateMessage): void {
 	const { monitorId, uptime1h, uptime24h, uptime7d, uptime30d, uptime90d, uptime365d } = message.data;
 
 	const item = appState.findItemById(monitorId);
-	if (!item) return;
+	if (!item) {
+		scheduleStatusRefresh();
+		return;
+	}
 
 	item.uptime1h = uptime1h;
 	item.uptime24h = uptime24h;
@@ -244,13 +242,16 @@ function handleMonitorDown(message: WSMonitorDownMessage): void {
 	const monitor = appState.findItemById(monitorId);
 
 	if (monitor) {
+		const previousStatus = monitor.status;
 		monitor.status = "down";
 		updateMonitorUI(monitorId, monitor);
-		updateParentGroups(monitorId);
 		updateSummaryStats();
 		updateOverallStatus();
+		if (previousStatus !== "down") scheduleStatusRefresh();
 
 		showNotification(`${monitor.name} is down`, "error");
+	} else {
+		scheduleStatusRefresh();
 	}
 }
 
@@ -266,9 +267,11 @@ function handleMonitorStillDown(message: WSMonitorStillDownMessage): void {
 	if (monitor && monitor.status !== "down") {
 		monitor.status = "down";
 		updateMonitorUI(monitorId, monitor);
-		updateParentGroups(monitorId);
 		updateSummaryStats();
 		updateOverallStatus();
+		scheduleStatusRefresh();
+	} else if (!monitor) {
+		scheduleStatusRefresh();
 	}
 }
 
@@ -282,13 +285,16 @@ function handleMonitorRecovered(message: WSMonitorRecoveredMessage): void {
 	const monitor = appState.findItemById(monitorId);
 
 	if (monitor) {
+		const previousStatus = monitor.status;
 		monitor.status = "up";
 		updateMonitorUI(monitorId, monitor);
-		updateParentGroups(monitorId);
 		updateSummaryStats();
 		updateOverallStatus();
+		if (previousStatus !== "up") scheduleStatusRefresh();
 
 		showNotification(`${monitor.name} has recovered`, "success");
+	} else {
+		scheduleStatusRefresh();
 	}
 }
 

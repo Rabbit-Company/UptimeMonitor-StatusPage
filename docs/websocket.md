@@ -91,6 +91,8 @@ Sent when a monitor receives a pulse:
 - "Last updated" timestamp changes
 - Brief highlight animation on the monitor row
 
+If a pulse belongs to an item that was still pending when the page loaded, the page fetches a fresh status snapshot so the item appears. After a status change, it also refreshes group statuses from the server, which applies each group's configured quorum strategy.
+
 ### Uptime Changed
 
 Sent when uptime of a monitor or a group has been recalculated:

@@ -13,12 +13,17 @@ import { initMaintenances } from "./maintenances";
 export function updateOverallStatus(): void {
 	if (!appState.statusData) return;
 
+	const hasItems = appState.statusData.items.length > 0;
 	const hasDown = appState.statusData.items.some((item) => item.status === "down");
 	const hasDegraded = appState.statusData.items.some((item) => item.status === "degraded");
 	const indicator = document.getElementById("overallStatusIndicator")!;
 	const text = document.getElementById("overallStatusText")!;
 
-	if (hasDown) {
+	if (!hasItems) {
+		indicator.className = "w-2 h-2 rounded-full bg-[var(--text-muted)]";
+		text.textContent = "Awaiting checks";
+		text.className = "text-sm text-[var(--text-muted)]";
+	} else if (hasDown) {
 		indicator.className = "w-2 h-2 rounded-full bg-[var(--status-down)] animate-pulse-slow";
 		text.textContent = "Partial Outage";
 		text.className = "text-sm text-[var(--status-down-text)]";
@@ -121,101 +126,6 @@ export function updateMonitorUI(monitorId: string, monitor: StatusItem): void {
 }
 
 /**
- * Update parent groups when a monitor changes
- */
-export function updateParentGroups(monitorId: string): void {
-	if (!appState.statusData) return;
-
-	function containsMonitor(item: StatusItem, targetId: string): boolean {
-		if (item.id === targetId) return true;
-		if (item.children) {
-			return item.children.some((child) => containsMonitor(child, targetId));
-		}
-		return false;
-	}
-
-	function calculateGroupStatus(item: StatusItem): "up" | "down" | "degraded" {
-		if (!item.children) return item.status;
-
-		const hasDown = item.children.some((child) => {
-			if (child.type === "group") return calculateGroupStatus(child) === "down";
-			return child.status === "down";
-		});
-
-		const hasDegraded = item.children.some((child) => {
-			if (child.type === "group") return calculateGroupStatus(child) === "degraded";
-			return child.status === "degraded";
-		});
-
-		return hasDown ? "down" : hasDegraded ? "degraded" : "up";
-	}
-
-	function calculateGroupLatency(item: StatusItem): number {
-		if (!item.children) return item.latency || 0;
-
-		const latencies: number[] = [];
-
-		for (const child of item.children) {
-			if (child.type === "group") {
-				const childLatency = calculateGroupLatency(child);
-				if (childLatency > 0) latencies.push(childLatency);
-			} else if (child.latency !== undefined && child.latency > 0) {
-				latencies.push(child.latency);
-			}
-		}
-
-		return latencies.length > 0 ? latencies.reduce((a, b) => a + b, 0) / latencies.length : 0;
-	}
-
-	function updateAncestorGroups(items: StatusItem[]): void {
-		for (const item of items) {
-			if (item.children) {
-				updateAncestorGroups(item.children);
-			}
-
-			if (item.type === "group" && item.children && containsMonitor(item, monitorId)) {
-				updateAncestorGroups(item.children);
-
-				if (containsMonitor(item, monitorId)) {
-					const newStatus = calculateGroupStatus(item);
-					if (item.status !== newStatus) {
-						item.status = newStatus;
-
-						const statusDot = document.querySelector(`[data-status-dot="${item.id}"]`);
-						if (statusDot) {
-							const statusClass =
-								newStatus === "up" ? "bg-[var(--status-up)]" : newStatus === "degraded" ? "bg-[var(--status-degraded)]" : "bg-[var(--status-down)]";
-							statusDot.className = `w-2 h-2 rounded-full flex-shrink-0 ${statusClass}`;
-						}
-					}
-
-					const newLatency = calculateGroupLatency(item);
-					if (newLatency > 0) {
-						item.latency = newLatency;
-
-						const desktopLatency = document.querySelector(`[data-latency-desktop="${item.id}"]`);
-						const mobileLatency = document.querySelector(`[data-latency-mobile="${item.id}"]`);
-
-						if (desktopLatency) {
-							desktopLatency.textContent = `${newLatency.toFixed(LATENCY_PRECISION)}ms`;
-							desktopLatency.classList.add("animate-pulse");
-							setTimeout(() => desktopLatency.classList.remove("animate-pulse"), 1000);
-						}
-						if (mobileLatency) {
-							mobileLatency.textContent = `${newLatency.toFixed(LATENCY_PRECISION)}ms`;
-							mobileLatency.classList.add("animate-pulse");
-							setTimeout(() => mobileLatency.classList.remove("animate-pulse"), 1000);
-						}
-					}
-				}
-			}
-		}
-	}
-
-	updateAncestorGroups(appState.statusData.items);
-}
-
-/**
  * Update a specific item's uptime display in the DOM
  */
 export function updateUptimeUI(itemId: string, item: StatusItem): void {
@@ -255,50 +165,21 @@ export function updateOverallUptime(): void {
 	setTimeout(() => uptimeEl.classList.remove("animate-pulse"), 1000);
 }
 
-/**
- * Render the main page content
- */
-export function renderPage(): void {
+/** Render status data without reinitializing incidents or maintenances. */
+export function renderStatusSnapshot(): void {
 	if (!appState.statusData) return;
 
 	document.getElementById("serviceName")!.textContent = appState.statusData.name;
-
 	updateOverallStatus();
-
-	let servicesUp = 0;
-	let servicesDown = 0;
-	let servicesDegraded = 0;
-
-	function countServices(items: StatusItem[]): void {
-		items.forEach((item) => {
-			if (item.type === "monitor") {
-				if (item.status === "up") servicesUp++;
-				else if (item.status === "degraded") servicesDegraded++;
-				else servicesDown++;
-			}
-			if (item.children) {
-				countServices(item.children);
-			}
-		});
-	}
-
-	countServices(appState.statusData.items);
-
-	const uptimeValues: number[] = appState.statusData.items.map((i) => getUptimeValue(i, appState.selectedUptimePeriod) || 0).filter((v) => v >= 0);
-	const averageUptime = uptimeValues.length > 0 ? (uptimeValues.reduce((sum, val) => sum + val, 0) / uptimeValues.length).toFixed(UPTIME_PRECISION) + "%" : "-";
-
-	const latencyValues: number[] = appState.statusData.items.map((i) => i.latency);
-	const averageLatency =
-		latencyValues.length > 0 ? (latencyValues.reduce((sum, val) => sum + val, 0) / latencyValues.length).toFixed(LATENCY_PRECISION) + "ms" : "-";
-
-	document.getElementById("uptimeValue")!.textContent = averageUptime;
-	document.getElementById("avgLatency")!.textContent = averageLatency;
-	document.getElementById("servicesUp")!.textContent = servicesUp.toString();
-	document.getElementById("servicesDown")!.textContent = (servicesDown + servicesDegraded).toString();
-
+	updateSummaryStats();
+	updateOverallUptime();
 	document.getElementById("lastUpdated")!.textContent = getDateTime(appState.statusData.lastUpdated);
-
 	renderServices();
+}
+
+/** Render the main page content. */
+export function renderPage(): void {
+	renderStatusSnapshot();
 	initIncidents();
 	initMaintenances();
 }
@@ -308,6 +189,12 @@ function renderServices(): void {
 
 	const container = document.getElementById("servicesList")!;
 	container.innerHTML = "";
+
+	if (appState.statusData.items.length === 0) {
+		container.innerHTML =
+			'<div class="rounded-xl border border-[var(--border-primary)] bg-[var(--bg-secondary)] p-6 text-center text-[var(--text-muted)]">Waiting for the first checks to arrive.</div>';
+		return;
+	}
 
 	appState.statusData.items.forEach((item) => {
 		container.appendChild(renderServiceItem(item, 0));
