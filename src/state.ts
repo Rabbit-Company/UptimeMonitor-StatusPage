@@ -44,6 +44,27 @@ class AppState {
 	}
 
 	/**
+	 * Recalculate group latencies bottom-up as the average of their direct children,
+	 * matching how the backend aggregates them. Returns groups whose latency changed.
+	 */
+	recalculateGroupLatencies(items: StatusItem[] = this.statusData?.items || []): StatusItem[] {
+		const changed: StatusItem[] = [];
+		for (const item of items) {
+			if (item.type !== "group" || !item.children) continue;
+			changed.push(...this.recalculateGroupLatencies(item.children));
+
+			const latencies = item.children.map((c) => c.latency).filter((l) => l !== undefined && l > 0);
+			if (latencies.length === 0) continue;
+			const latency = latencies.reduce((sum, val) => sum + val, 0) / latencies.length;
+			if (latency !== item.latency) {
+				item.latency = latency;
+				changed.push(item);
+			}
+		}
+		return changed;
+	}
+
+	/**
 	 * Toggle group expansion state
 	 */
 	toggleGroup(groupId: string): boolean {

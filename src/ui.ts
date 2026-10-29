@@ -68,12 +68,31 @@ export function updateSummaryStats(): void {
 		latencyValues.length > 0 ? (latencyValues.reduce((sum, val) => sum + val, 0) / latencyValues.length).toFixed(LATENCY_PRECISION) + "ms" : "-";
 
 	const avgLatencyEl = document.getElementById("avgLatency")!;
-	avgLatencyEl.textContent = averageLatency;
-	avgLatencyEl.classList.add("animate-pulse");
-	setTimeout(() => avgLatencyEl.classList.remove("animate-pulse"), 1000);
+	if (avgLatencyEl.textContent !== averageLatency) {
+		avgLatencyEl.textContent = averageLatency;
+		avgLatencyEl.classList.add("animate-pulse");
+		setTimeout(() => avgLatencyEl.classList.remove("animate-pulse"), 1000);
+	}
 
 	document.getElementById("servicesUp")!.textContent = servicesUp.toString();
 	document.getElementById("servicesDown")!.textContent = (servicesDown + servicesDegraded).toString();
+}
+
+/**
+ * Update a group's latency display in the DOM
+ */
+export function updateGroupLatencyUI(group: StatusItem): void {
+	const text = `${group.latency.toFixed(LATENCY_PRECISION)}ms`;
+
+	const desktopLatency = document.querySelector(`[data-latency-desktop="${group.id}"]`);
+	if (desktopLatency && desktopLatency.textContent !== text) {
+		desktopLatency.textContent = text;
+		desktopLatency.classList.add("animate-pulse");
+		setTimeout(() => desktopLatency.classList.remove("animate-pulse"), 1000);
+	}
+
+	const mobileLatency = document.querySelector(`[data-latency-mobile="${group.id}"]`);
+	if (mobileLatency) mobileLatency.textContent = text;
 }
 
 /**

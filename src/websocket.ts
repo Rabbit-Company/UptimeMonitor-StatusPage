@@ -2,7 +2,7 @@ import type { WSMessage, WSPulseMessage, WSMonitorDownMessage, WSMonitorStillDow
 import { BACKEND_URL, STATUS_PAGE_SLUG, WS_MAX_RECONNECT_ATTEMPTS, WS_RECONNECT_BASE_DELAY, WS_RECONNECT_MAX_DELAY } from "./config";
 import { appState } from "./state";
 import { showNotification } from "./notifications";
-import { updateMonitorUI, updateSummaryStats, updateOverallStatus, updateUptimeUI, updateOverallUptime } from "./ui";
+import { updateMonitorUI, updateGroupLatencyUI, updateSummaryStats, updateOverallStatus, updateUptimeUI, updateOverallUptime } from "./ui";
 import { scheduleStatusRefresh } from "./status-sync";
 import { getDateTime } from "./utils";
 import { getStoredPassword } from "./auth";
@@ -198,6 +198,7 @@ function handlePulseUpdate(message: WSPulseMessage): void {
 
 	appState.statusData.lastUpdated = timestamp;
 	updateMonitorUI(monitorId, monitor);
+	appState.recalculateGroupLatencies().forEach(updateGroupLatencyUI);
 	updateSummaryStats();
 	if (previousStatus !== status) {
 		updateOverallStatus();
